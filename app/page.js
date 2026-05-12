@@ -183,6 +183,25 @@ export default function Dashboard() {
     setSelected(next);
   }
 
+  async function deleteContact(contact) {
+    const label = contact.name || contact.email || contact.phone || 'this contact';
+    if (!window.confirm(`Delete ${label}? This will also remove this client's submitted response.`)) return;
+
+    setMessage(`Deleting ${label}...`);
+    const response = await fetch(`/api/contacts/${contact.id}`, { method: 'DELETE' });
+    const data = await response.json();
+    if (!response.ok) {
+      setMessage(data.error || 'Unable to delete contact.');
+      return;
+    }
+
+    const next = new Set(selected);
+    next.delete(contact.id);
+    setSelected(next);
+    setMessage(`${label} deleted.`);
+    await loadData();
+  }
+
   function openSelectedWhatsApp() {
     const first = contacts.find((contact) => selected.has(contact.id) && contact.phone);
     if (!first) {
@@ -300,6 +319,7 @@ export default function Dashboard() {
                   <th>Status</th>
                   <th>Form</th>
                   <th>WhatsApp</th>
+                  <th>Delete</th>
                 </tr>
               </thead>
               <tbody>
@@ -322,6 +342,7 @@ export default function Dashboard() {
                     </td>
                     <td><a className="link-button" href={formLink(contact)} target="_blank">Open</a></td>
                     <td>{contact.phone ? <a className="link-button" href={whatsAppLink(contact)} target="_blank">Message</a> : '-'}</td>
+                    <td><button className="danger-button" type="button" onClick={() => deleteContact(contact)}>Delete</button></td>
                   </tr>
                 ))}
               </tbody>

@@ -278,6 +278,16 @@ td input[type="checkbox"] {
   text-decoration: none;
 }
 
+.danger-button {
+  min-height: 32px;
+  width: auto;
+  color: #8a1f1f;
+  background: #fff4f4;
+  border-color: #f3c6c6;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .responses {
   display: grid;
   gap: 10px;
