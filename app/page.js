@@ -202,8 +202,8 @@ export default function Dashboard() {
     if (!window.confirm(`Delete ${label}? This will also remove this client's submitted response.`)) return;
 
     setMessage(`Deleting ${label}...`);
-    const response = await fetch(`/api/contacts/${contact.id}`, {
-      method: 'DELETE',
+    const response = await fetch('/api/delete-contact', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       cache: 'no-store',
       body: JSON.stringify({ id: contact.id, email: contact.email, phone: contact.phone })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 function idFromRequest(request, params) {
   if (params?.id) return params.id;
