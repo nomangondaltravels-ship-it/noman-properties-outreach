@@ -52,7 +52,17 @@ export async function POST(request) {
   const { data: contacts, error: contactsError } = await supabase.from('contacts').select('id,email,phone');
   if (contactsError) return NextResponse.json({ error: contactsError.message }, { status: 500 });
 
-  const matches = matchingContacts(contacts || [], { id, email, phone });
+  let matches = matchingContacts(contacts || [], { id, email, phone });
+  if (!matches.length) {
+    const url = new URL('/api/contacts', request.url);
+    url.searchParams.set('t', String(Date.now()));
+    const contactResponse = await fetch(url, { cache: 'no-store' });
+    if (contactResponse.ok) {
+      const contactData = await contactResponse.json();
+      matches = matchingContacts(contactData.contacts || [], { id, email, phone });
+    }
+  }
+
   if (!matches.length) {
     return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
   }
