@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { defaultEmailBody, defaultEmailSubject, getTransporter, sendContactEmail, smtpConfigured } from '@/lib/email';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { renderTemplate } from '@/lib/templates';
+import { canEmailContact, templateForContact } from '@/lib/compliance';
 
 export const runtime = 'nodejs';
 
@@ -38,27 +39,28 @@ async function runAutoEmail(request) {
 
   const supabase = getSupabaseAdmin();
   const batchSize = Number(process.env.AUTO_EMAIL_BATCH_SIZE || 20);
-  const subjectTemplate = process.env.AUTO_EMAIL_SUBJECT || defaultEmailSubject;
-  const bodyTemplate = process.env.AUTO_EMAIL_BODY || defaultEmailBody;
+  const subjectTemplate = process.env.AUTO_EMAIL_SUBJECT || '';
+  const bodyTemplate = process.env.AUTO_EMAIL_BODY || '';
 
   const { data: contacts, error } = await supabase
     .from('contacts')
     .select('*')
-    .eq('status', 'ready')
     .not('email', 'is', null)
     .order('created_at', { ascending: true })
-    .limit(batchSize);
+    .limit(batchSize * 4);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!contacts.length) return NextResponse.json({ sent: 0, message: 'No ready contacts with email.' });
+  const eligibleContacts = contacts.filter((contact) => canEmailContact(contact).ok).slice(0, batchSize);
+  if (!eligibleContacts.length) return NextResponse.json({ sent: 0, message: 'No eligible contacts with email.' });
 
   const transporter = getTransporter();
   const results = [];
 
-  for (const contact of contacts) {
+  for (const contact of eligibleContacts) {
     try {
-      const subject = renderTemplate(subjectTemplate, contact);
-      const body = renderTemplate(bodyTemplate, contact);
+      const categoryTemplate = templateForContact(contact);
+      const subject = renderTemplate(subjectTemplate || categoryTemplate.subject || defaultEmailSubject, contact);
+      const body = renderTemplate(bodyTemplate || categoryTemplate.body || defaultEmailBody, contact);
       await sendContactEmail({ transporter, contact, subject, body });
       await supabase
         .from('contacts')
@@ -78,7 +80,7 @@ async function runAutoEmail(request) {
     subject: subjectTemplate,
     body: bodyTemplate,
     dry_run: false,
-    count: contacts.length,
+    count: eligibleContacts.length,
     results
   });
 

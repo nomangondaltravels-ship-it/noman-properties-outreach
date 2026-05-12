@@ -181,6 +181,10 @@ button.primary {
   gap: 10px;
 }
 
+.filters select {
+  min-width: 160px;
+}
+
 .table-band {
   margin-top: 18px;
   padding: 20px;
@@ -240,6 +244,26 @@ td input[type="checkbox"] {
 .badge.responded {
   color: #6f3d12;
   background: #fff2d5;
+}
+
+.badge.emailed {
+  color: #334155;
+  background: #e8eef5;
+}
+
+.badge.blocked_business,
+.badge.do_not_contact,
+.badge.deleted {
+  color: #8a1f1f;
+  background: #fde8e8;
+}
+
+.row-note {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .link-button {

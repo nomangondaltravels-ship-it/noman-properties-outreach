@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { renderTemplate } from '@/lib/templates';
 import { getTransporter, sendContactEmail, smtpConfigured } from '@/lib/email';
+import { canEmailContact, templateForContact } from '@/lib/compliance';
 
 export const runtime = 'nodejs';
 
@@ -23,8 +24,15 @@ export async function POST(request) {
   const results = [];
 
   for (const contact of selected) {
-    const renderedSubject = renderTemplate(subject, contact);
-    const renderedBody = renderTemplate(body, contact);
+    const eligibility = canEmailContact(contact);
+    if (!eligibility.ok) {
+      results.push({ id: contact.id, email: contact.email, status: 'skipped', error: eligibility.reason });
+      continue;
+    }
+
+    const categoryTemplate = templateForContact(contact);
+    const renderedSubject = renderTemplate(subject || categoryTemplate.subject, contact);
+    const renderedBody = renderTemplate(body || categoryTemplate.body, contact);
 
     if (dryRun) {
       results.push({ id: contact.id, email: contact.email, status: 'preview', subject: renderedSubject });

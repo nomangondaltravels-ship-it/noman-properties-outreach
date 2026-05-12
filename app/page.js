@@ -1,18 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { canEmailContact, categoryTemplates, daysSince, normalizeCategory } from '@/lib/compliance';
 
-const initialEmail = `Dear {{name}},
-
-You shared your details in the green list for {{serviceCategory}} in {{area}}.
-
-To help you properly, please submit the property details using this secure form:
-{{formLink}}
-
-If you want to sell a property, please add location, property type, size, expected price, and availability.
-
-Regards,
-Noman Properties`;
+const initialEmail = categoryTemplates.all.body;
 
 const initialWhatsApp = `Dear {{name}},
 
@@ -22,7 +13,7 @@ Please submit your property details here:
 {{formLink}}
 
 Regards,
-Noman Properties`;
+Xsite Real Estate`;
 
 function escapeText(value) {
   return value || '-';
@@ -34,7 +25,10 @@ export default function Dashboard() {
   const [config, setConfig] = useState({});
   const [selected, setSelected] = useState(new Set());
   const [query, setQuery] = useState('');
-  const [subject, setSubject] = useState('Property details required - Noman Properties');
+  const [serviceFilter, setServiceFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('eligible');
+  const [templateKey, setTemplateKey] = useState('all');
+  const [subject, setSubject] = useState(categoryTemplates.all.subject);
   const [body, setBody] = useState(initialEmail);
   const [whatsAppBody, setWhatsAppBody] = useState(initialWhatsApp);
   const [message, setMessage] = useState('');
@@ -54,17 +48,29 @@ export default function Dashboard() {
 
   const filteredContacts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return contacts;
-    return contacts.filter((contact) =>
-      [contact.name, contact.area, contact.email, contact.phone, contact.service_category, contact.property_type]
+    return contacts.filter((contact) => {
+      const eligible = canEmailContact(contact).ok;
+      if (serviceFilter !== 'all' && normalizeCategory(contact.service_category) !== serviceFilter) return false;
+      if (statusFilter === 'eligible' && !eligible) return false;
+      if (statusFilter === 'blocked' && eligible) return false;
+      if (!normalized) return true;
+      return [contact.name, contact.area, contact.email, contact.phone, contact.service_category, contact.property_type]
         .join(' ')
         .toLowerCase()
-        .includes(normalized)
-    );
-  }, [contacts, query]);
+        .includes(normalized);
+    });
+  }, [contacts, query, serviceFilter, statusFilter]);
 
-  const readyContacts = contacts.filter((contact) => contact.status === 'ready');
+  const eligibleContacts = contacts.filter((contact) => canEmailContact(contact).ok);
+  const blockedContacts = contacts.filter((contact) => !canEmailContact(contact).ok);
   const respondedContacts = contacts.filter((contact) => contact.status === 'responded');
+
+  function applyTemplate(key) {
+    const template = categoryTemplates[key] || categoryTemplates.all;
+    setTemplateKey(key);
+    setSubject(template.subject);
+    setBody(template.body);
+  }
 
   function formLink(contact) {
     const base = (config.publicFormBaseUrl || '').replace(/\/+$/, '');
@@ -122,7 +128,8 @@ export default function Dashboard() {
     }
     const sent = data.results.filter((item) => item.status === 'sent').length;
     const failed = data.results.filter((item) => item.status === 'failed').length;
-    setMessage(`Sent ${sent} email(s). Failed ${failed}.`);
+    const skipped = data.results.filter((item) => item.status === 'skipped').length;
+    setMessage(`Sent ${sent} email(s). Failed ${failed}. Skipped ${skipped}.`);
     await loadData();
   }
 
@@ -155,9 +162,9 @@ export default function Dashboard() {
       <main>
         <section className="band overview">
           <Metric label="Total Contacts" value={contacts.length} />
-          <Metric label="Ready To Email" value={readyContacts.length} />
+          <Metric label="Eligible To Email" value={eligibleContacts.length} />
           <Metric label="Responded" value={respondedContacts.length} />
-          <Metric label="Form Base URL" value={config.publicFormBaseUrl || '-'} />
+          <Metric label="Blocked / Waiting" value={blockedContacts.length} />
         </section>
 
         <section className="grid">
@@ -180,6 +187,11 @@ export default function Dashboard() {
               <span>{selected.size} selected</span>
             </div>
             <div className="stack">
+              <select value={templateKey} onChange={(event) => applyTemplate(event.target.value)}>
+                {Object.entries(categoryTemplates).map(([key, template]) => (
+                  <option key={key} value={key}>{template.label} Template</option>
+                ))}
+              </select>
               <input value={subject} onChange={(event) => setSubject(event.target.value)} />
               <textarea rows={10} value={body} onChange={(event) => setBody(event.target.value)} />
               <div className="actions">
@@ -212,7 +224,18 @@ export default function Dashboard() {
             </div>
             <div className="filters">
               <input placeholder="Search name, area, email, phone" value={query} onChange={(event) => setQuery(event.target.value)} />
-              <button type="button" onClick={() => setSelected(new Set(readyContacts.filter((contact) => contact.email).map((contact) => contact.id)))}>Select Ready</button>
+              <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)}>
+                <option value="all">All services</option>
+                <option value="sell">Sell Property</option>
+                <option value="lease">Lease Property</option>
+                <option value="buy">Buy / Purchase</option>
+              </select>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                <option value="eligible">Eligible only</option>
+                <option value="all">All contacts</option>
+                <option value="blocked">Blocked / waiting</option>
+              </select>
+              <button type="button" onClick={() => setSelected(new Set(filteredContacts.filter((contact) => canEmailContact(contact).ok).map((contact) => contact.id)))}>Select Eligible</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -241,7 +264,14 @@ export default function Dashboard() {
                     <td>{escapeText(contact.area)}</td>
                     <td>{escapeText(contact.email)}</td>
                     <td>{escapeText(contact.phone)}</td>
-                    <td><span className={`badge ${contact.status}`}>{contact.status || 'ready'}</span></td>
+                    <td>
+                      <span className={`badge ${contact.status}`}>{contact.status || 'ready'}</span>
+                      <small className="row-note">
+                        {canEmailContact(contact).ok
+                          ? contact.last_emailed_at ? `Last emailed ${daysSince(contact.last_emailed_at)} days ago` : 'Eligible'
+                          : canEmailContact(contact).reason}
+                      </small>
+                    </td>
                     <td><a className="link-button" href={formLink(contact)} target="_blank">Open</a></td>
                     <td>{contact.phone ? <a className="link-button" href={whatsAppLink(contact)} target="_blank">Message</a> : '-'}</td>
                   </tr>

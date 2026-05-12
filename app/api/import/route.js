@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { businessEmailBlocked } from '@/lib/compliance';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +49,7 @@ function rowToContact(row) {
     email: clean(contact.email).toLowerCase(),
     phone: clean(contact.phone).replace(/[^\d+]/g, ''),
     subscription_end_date: clean(contact.subscription_end_date),
-    status: 'ready'
+    status: businessEmailBlocked(contact.email) ? 'blocked_business' : 'ready'
   };
 }
 
@@ -92,6 +93,7 @@ export async function POST(request) {
           email: contact.email,
           phone: contact.phone,
           subscription_end_date: contact.subscription_end_date,
+          status: ['responded', 'do_not_contact'].includes(current.status) ? current.status : contact.status,
           updated_at: new Date().toISOString()
         })
         .eq('id', current.id);
