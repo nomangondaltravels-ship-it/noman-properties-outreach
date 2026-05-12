@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
