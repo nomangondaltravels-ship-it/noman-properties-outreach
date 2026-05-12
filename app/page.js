@@ -1,0 +1,257 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+
+const initialEmail = `Dear {{name}},
+
+You shared your details in the green list for {{serviceCategory}} in {{area}}.
+
+To help you properly, please submit the property details using this secure form:
+{{formLink}}
+
+If you want to sell a property, please add location, property type, size, expected price, and availability.
+
+Regards,
+Noman Properties`;
+
+function escapeText(value) {
+  return value || '-';
+}
+
+export default function Dashboard() {
+  const [contacts, setContacts] = useState([]);
+  const [responses, setResponses] = useState([]);
+  const [config, setConfig] = useState({});
+  const [selected, setSelected] = useState(new Set());
+  const [query, setQuery] = useState('');
+  const [subject, setSubject] = useState('Property details required - Noman Properties');
+  const [body, setBody] = useState(initialEmail);
+  const [message, setMessage] = useState('');
+  const [importMessage, setImportMessage] = useState('');
+
+  async function loadData() {
+    const [configRes, dataRes] = await Promise.all([fetch('/api/config'), fetch('/api/contacts')]);
+    setConfig(await configRes.json());
+    const data = await dataRes.json();
+    setContacts(data.contacts || []);
+    setResponses(data.responses || []);
+  }
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredContacts = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return contacts;
+    return contacts.filter((contact) =>
+      [contact.name, contact.area, contact.email, contact.phone, contact.service_category, contact.property_type]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalized)
+    );
+  }, [contacts, query]);
+
+  const readyContacts = contacts.filter((contact) => contact.status === 'ready');
+  const respondedContacts = contacts.filter((contact) => contact.status === 'responded');
+
+  function formLink(contact) {
+    const base = (config.publicFormBaseUrl || '').replace(/\/+$/, '');
+    return `${base}/form/${contact.token}`;
+  }
+
+  function renderTemplate(value, contact) {
+    return value
+      .replaceAll('{{name}}', contact?.name || 'Client')
+      .replaceAll('{{area}}', contact?.area || 'your selected area')
+      .replaceAll('{{propertyType}}', contact?.property_type || 'property')
+      .replaceAll('{{serviceCategory}}', contact?.service_category || 'property requirement')
+      .replaceAll('{{formLink}}', contact ? formLink(contact) : '');
+  }
+
+  async function importFile(event) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    setImportMessage('Importing...');
+    const response = await fetch('/api/import', { method: 'POST', body: formData });
+    const data = await response.json();
+    setImportMessage(response.ok ? `Added ${data.added}, updated ${data.updated}. Total contacts: ${data.total}.` : data.error);
+    await loadData();
+  }
+
+  async function sendCampaign(dryRun) {
+    const ids = [...selected];
+    if (!ids.length) {
+      setMessage('Please select contacts first.');
+      return;
+    }
+
+    if (dryRun) {
+      const first = contacts.find((contact) => contact.id === ids[0]);
+      setMessage(renderTemplate(body, first));
+      return;
+    }
+
+    setMessage('Sending emails...');
+    const response = await fetch('/api/send-campaign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, subject, body, dryRun: false })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setMessage(data.error || 'Something went wrong.');
+      return;
+    }
+    const sent = data.results.filter((item) => item.status === 'sent').length;
+    const failed = data.results.filter((item) => item.status === 'failed').length;
+    setMessage(`Sent ${sent} email(s). Failed ${failed}.`);
+    await loadData();
+  }
+
+  function toggleContact(id, checked) {
+    const next = new Set(selected);
+    if (checked) next.add(id);
+    else next.delete(id);
+    setSelected(next);
+  }
+
+  return (
+    <>
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">Internal System</p>
+          <h1>Noman Properties Outreach</h1>
+        </div>
+        <div className="status">{config.smtpConfigured ? `SMTP ready: ${config.fromEmail}` : 'SMTP not configured'}</div>
+      </header>
+
+      <main>
+        <section className="band overview">
+          <Metric label="Total Contacts" value={contacts.length} />
+          <Metric label="Ready To Email" value={readyContacts.length} />
+          <Metric label="Responded" value={respondedContacts.length} />
+          <Metric label="Form Base URL" value={config.publicFormBaseUrl || '-'} />
+        </section>
+
+        <section className="grid">
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Import Green List</h2>
+              <span>Excel or CSV</span>
+            </div>
+            <form className="stack" onSubmit={importFile}>
+              <input type="file" name="file" accept=".xlsx,.xls,.csv" required />
+              <button type="submit">Import Contacts</button>
+            </form>
+            <p className="note">Supported columns: Name, Service Category, Property Type, Area, Budget (AED), Email, Phone, Subscription End Date.</p>
+            {importMessage && <div className="notice">{importMessage}</div>}
+          </div>
+
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Email Campaign</h2>
+              <span>{selected.size} selected</span>
+            </div>
+            <div className="stack">
+              <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+              <textarea rows={10} value={body} onChange={(event) => setBody(event.target.value)} />
+              <div className="actions">
+                <button type="button" onClick={() => sendCampaign(true)}>Preview Only</button>
+                <button type="button" className="primary" onClick={() => sendCampaign(false)}>Send Email</button>
+              </div>
+            </div>
+            <p className="note">{'Variables: {{name}}, {{area}}, {{propertyType}}, {{serviceCategory}}, {{formLink}}'}</p>
+            {message && <div className="notice preserve">{message}</div>}
+          </div>
+        </section>
+
+        <section className="band table-band">
+          <div className="table-toolbar">
+            <div>
+              <h2>Contacts</h2>
+              <p>Imported green-list records and email status.</p>
+            </div>
+            <div className="filters">
+              <input placeholder="Search name, area, email, phone" value={query} onChange={(event) => setQuery(event.target.value)} />
+              <button type="button" onClick={() => setSelected(new Set(readyContacts.filter((contact) => contact.email).map((contact) => contact.id)))}>Select Ready</button>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Name</th>
+                  <th>Service</th>
+                  <th>Property</th>
+                  <th>Area</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Status</th>
+                  <th>Form</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredContacts.map((contact) => (
+                  <tr key={contact.id}>
+                    <td><input type="checkbox" checked={selected.has(contact.id)} onChange={(event) => toggleContact(contact.id, event.target.checked)} /></td>
+                    <td><strong>{escapeText(contact.name)}</strong></td>
+                    <td>{escapeText(contact.service_category)}</td>
+                    <td>{escapeText(contact.property_type)}</td>
+                    <td>{escapeText(contact.area)}</td>
+                    <td>{escapeText(contact.email)}</td>
+                    <td>{escapeText(contact.phone)}</td>
+                    <td><span className={`badge ${contact.status}`}>{contact.status || 'ready'}</span></td>
+                    <td><a className="link-button" href={formLink(contact)} target="_blank">Open</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="grid">
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Client Responses</h2>
+              <span>{responses.length}</span>
+            </div>
+            <div className="responses">
+              {!responses.length && <p className="note">No client responses yet.</p>}
+              {responses.map((response) => (
+                <div className="response-item" key={response.id}>
+                  <strong>{response.name || 'Client'} - {response.requirement || 'Details'}</strong>
+                  <p>{response.area || ''} {response.property_type || ''} {response.price ? `- ${response.price}` : ''}</p>
+                  <p>{response.phone || ''} {response.email || ''}</p>
+                  <p>{response.notes || ''}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="panel">
+            <div className="panel-head">
+              <h2>Setup Notes</h2>
+              <span>Vercel + Supabase</span>
+            </div>
+            <ul className="notes-list">
+              <li>Add Supabase and SMTP keys in Vercel Environment Variables.</li>
+              <li>Set PUBLIC_FORM_BASE_URL to https://outreach.nomanproperties.com.</li>
+              <li>Client form links will work publicly after domain setup.</li>
+              <li>Data is saved in Supabase, not on your PC.</li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
