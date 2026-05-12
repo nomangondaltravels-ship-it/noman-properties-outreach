@@ -77,12 +77,13 @@ export async function POST(request) {
   const existing = new Map(existingContacts.map((contact) => [contactKey(contact), contact]));
   let added = 0;
   let updated = 0;
+  const items = [];
 
   for (const contact of incoming) {
     const key = contactKey(contact);
     const current = existing.get(key);
     if (current) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('contacts')
         .update({
           name: contact.name,
@@ -96,17 +97,22 @@ export async function POST(request) {
           status: ['responded', 'do_not_contact'].includes(current.status) ? current.status : contact.status,
           updated_at: new Date().toISOString()
         })
-        .eq('id', current.id);
+        .eq('id', current.id)
+        .select()
+        .single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      existing.set(key, data);
+      items.push({ id: data.id, email: data.email, status: data.status, action: 'updated' });
       updated += 1;
     } else {
       const { data, error } = await supabase.from('contacts').insert(contact).select().single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       existing.set(key, data);
+      items.push({ id: data.id, email: data.email, status: data.status, action: 'added' });
       added += 1;
     }
   }
 
   const { count } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
-  return NextResponse.json({ added, updated, total: count || 0 });
+  return NextResponse.json({ added, updated, total: count || 0, items });
 }
