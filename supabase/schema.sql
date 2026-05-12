@@ -40,9 +40,16 @@ create table if not exists responses (
   phone text,
   email text,
   preferred_contact text,
+  callback_date text,
+  callback_time text,
+  meeting_preference text,
   notes text,
   submitted_at timestamptz not null default now()
 );
+
+alter table responses add column if not exists callback_date text;
+alter table responses add column if not exists callback_time text;
+alter table responses add column if not exists meeting_preference text;
 
 create table if not exists campaigns (
   id uuid primary key default gen_random_uuid(),

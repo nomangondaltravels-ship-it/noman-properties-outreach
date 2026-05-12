@@ -15,6 +15,9 @@ const emptyForm = {
   phone: '',
   email: '',
   preferred_contact: 'WhatsApp',
+  callback_date: '',
+  callback_time: '',
+  meeting_preference: 'No meeting needed',
   notes: ''
 };
 
@@ -33,6 +36,14 @@ export default function ClientForm({ params }) {
         return;
       }
       setContact(data);
+      const requestType = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('request')
+        : '';
+      const preferredContact = requestType === 'zoom'
+        ? 'Zoom Meeting'
+        : requestType === 'callback'
+          ? 'Phone Call'
+          : 'WhatsApp';
       setForm((current) => ({
         ...current,
         name: data.name || '',
@@ -40,7 +51,9 @@ export default function ClientForm({ params }) {
         email: data.email || '',
         property_type: data.property_type || '',
         area: data.area || '',
-        requirement: (data.service_category || '').toLowerCase().includes('sell') ? 'Sell Property' : ''
+        requirement: data.service_category || '',
+        preferred_contact: preferredContact,
+        meeting_preference: requestType === 'zoom' ? 'Zoom Meeting' : 'No meeting needed'
       }));
     }
     loadContact();
@@ -71,7 +84,7 @@ export default function ClientForm({ params }) {
     return (
       <main className="client-form">
         <div className="brand-block">
-          <p className="eyebrow">Noman Properties</p>
+          <p className="eyebrow">Xsite Real Estate</p>
           <h1>Invalid Link</h1>
           <p>This form link is not valid.</p>
         </div>
@@ -82,9 +95,9 @@ export default function ClientForm({ params }) {
   return (
     <main className="client-form">
       <div className="brand-block">
-        <p className="eyebrow">Noman Properties</p>
+        <p className="eyebrow">Xsite Real Estate</p>
         <h1>Property Details</h1>
-        <p>{contact ? `${contact.name || 'Dear client'}, please share the basic details for ${contact.service_category || 'your property requirement'} in ${contact.area || 'your selected area'}.` : 'Loading...'}</p>
+        <p>{contact ? `${contact.name || 'Dear client'}, please share the basic details for your DLD green-list requirement: ${contact.service_category || 'property requirement'} in ${contact.area || 'your selected area'}.` : 'Loading...'}</p>
       </div>
 
       <form className="details-grid" onSubmit={submit}>
@@ -93,7 +106,8 @@ export default function ClientForm({ params }) {
             <option value="">Select</option>
             <option>Sell Property</option>
             <option>Buy Property</option>
-            <option>Rent Property</option>
+            <option>Lease Property</option>
+            <option>All Services</option>
             <option>Other</option>
           </select>
         </Field>
@@ -111,7 +125,18 @@ export default function ClientForm({ params }) {
           <select value={form.preferred_contact} onChange={(event) => update('preferred_contact', event.target.value)}>
             <option>WhatsApp</option>
             <option>Phone Call</option>
+            <option>Zoom Meeting</option>
             <option>Email</option>
+          </select>
+        </Field>
+        <TextField label="Preferred Callback Date" type="date" value={form.callback_date} onChange={(value) => update('callback_date', value)} />
+        <TextField label="Preferred Callback Time" type="time" value={form.callback_time} onChange={(value) => update('callback_time', value)} />
+        <Field label="Meeting Preference">
+          <select value={form.meeting_preference} onChange={(event) => update('meeting_preference', event.target.value)}>
+            <option>No meeting needed</option>
+            <option>Phone Call</option>
+            <option>WhatsApp Call</option>
+            <option>Zoom Meeting</option>
           </select>
         </Field>
         <label className="wide">

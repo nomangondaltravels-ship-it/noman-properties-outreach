@@ -41,6 +41,9 @@ export async function POST(request, { params }) {
     phone: payload.phone || '',
     email: payload.email || '',
     preferred_contact: payload.preferred_contact || '',
+    callback_date: payload.callback_date || '',
+    callback_time: payload.callback_time || '',
+    meeting_preference: payload.meeting_preference || '',
     notes: payload.notes || ''
   });
 

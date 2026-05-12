@@ -89,13 +89,39 @@ export default function Dashboard() {
     return `${base}/form/${contact.token}`;
   }
 
+  function withRequest(contact, request) {
+    return `${formLink(contact)}?request=${encodeURIComponent(request)}`;
+  }
+
+  function brokerWhatsAppLink(contact) {
+    const number = String(config.brokerWhatsAppNumber || '').replace(/[^\d]/g, '');
+    if (!number) return 'WhatsApp number will be shared after reply';
+    const text = [
+      `Hello ${config.brokerName || 'Hafiz Muhammad Noman Farman Ali'},`,
+      `I received your email regarding my ${contact?.service_category || 'property requirement'} in ${contact?.area || 'Dubai'}.`,
+      'Please contact me.'
+    ].join('\n');
+    return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+  }
+
   function renderTemplate(value, contact) {
+    const brokerEmail = config.brokerEmail || config.fromEmail || 'noman@xsite.ae';
     return value
       .replaceAll('{{name}}', contact?.name || 'Client')
       .replaceAll('{{area}}', contact?.area || 'your selected area')
       .replaceAll('{{propertyType}}', contact?.property_type || 'property')
+      .replaceAll('{{budget}}', contact?.budget || 'not mentioned')
       .replaceAll('{{serviceCategory}}', contact?.service_category || 'property requirement')
-      .replaceAll('{{formLink}}', contact ? formLink(contact) : '');
+      .replaceAll('{{formLink}}', contact ? formLink(contact) : '')
+      .replaceAll('{{callbackLink}}', contact ? withRequest(contact, 'callback') : '')
+      .replaceAll('{{zoomLink}}', contact ? withRequest(contact, 'zoom') : '')
+      .replaceAll('{{whatsappLink}}', contact ? brokerWhatsAppLink(contact) : '')
+      .replaceAll('{{emailLink}}', `mailto:${brokerEmail}`)
+      .replaceAll('{{brokerEmail}}', brokerEmail)
+      .replaceAll('{{brokerName}}', config.brokerName || 'Hafiz Muhammad Noman Farman Ali')
+      .replaceAll('{{brokerId}}', config.brokerId || '78569')
+      .replaceAll('{{companyName}}', config.companyName || 'Xsite Real Estate')
+      .replaceAll('{{websiteLink}}', config.websiteUrl || 'https://www.nomanproperties.com');
   }
 
   function whatsAppLink(contact) {
@@ -221,7 +247,7 @@ export default function Dashboard() {
                 <button type="button" className="primary" onClick={() => sendCampaign(false)}>Send Email</button>
               </div>
             </div>
-            <p className="note">{'Variables: {{name}}, {{area}}, {{propertyType}}, {{serviceCategory}}, {{formLink}}'}</p>
+            <p className="note">{'Variables: {{name}}, {{area}}, {{propertyType}}, {{budget}}, {{serviceCategory}}, {{formLink}}, {{callbackLink}}, {{zoomLink}}, {{whatsappLink}}, {{brokerEmail}}, {{brokerName}}, {{brokerId}}, {{companyName}}'}</p>
             {message && <div className="notice preserve">{message}</div>}
           </div>
         </section>
@@ -316,6 +342,7 @@ export default function Dashboard() {
                   <strong>{response.name || 'Client'} - {response.requirement || 'Details'}</strong>
                   <p>{response.area || ''} {response.property_type || ''} {response.price ? `- ${response.price}` : ''}</p>
                   <p>{response.phone || ''} {response.email || ''}</p>
+                  <p>{response.preferred_contact ? `Preferred: ${response.preferred_contact}` : ''} {response.callback_date ? ` | Callback: ${response.callback_date}` : ''} {response.callback_time ? ` ${response.callback_time}` : ''} {response.meeting_preference ? ` | Meeting: ${response.meeting_preference}` : ''}</p>
                   <p>{response.notes || ''}</p>
                 </div>
               ))}
