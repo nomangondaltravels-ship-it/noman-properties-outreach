@@ -136,7 +136,17 @@ export default function Dashboard() {
     setImportMessage('Importing...');
     const response = await fetch('/api/import', { method: 'POST', body: formData });
     const data = await response.json();
-    setImportMessage(response.ok ? `Added ${data.added}, updated ${data.updated}. Total contacts: ${data.total}.` : data.error);
+    if (!response.ok) {
+      setImportMessage(data.error);
+      return;
+    }
+
+    const importedIds = (data.items || []).map((item) => item.id);
+    setQuery('');
+    setServiceFilter('all');
+    setStatusFilter('all');
+    setSelected(new Set(importedIds));
+    setImportMessage(`Import complete: ${data.added} new, ${data.updated} updated. Total contacts: ${data.total}. Imported/updated rows are selected below.`);
     await loadData();
   }
 
@@ -198,6 +208,8 @@ export default function Dashboard() {
     const next = new Set(selected);
     next.delete(contact.id);
     setSelected(next);
+    setContacts((current) => current.filter((item) => item.id !== contact.id));
+    setResponses((current) => current.filter((item) => item.contact_id !== contact.id));
     setMessage(`${label} deleted.`);
     await loadData();
   }
