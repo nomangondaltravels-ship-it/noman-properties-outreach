@@ -21,34 +21,26 @@ function cleanPhone(value) {
   return String(value || '').replace(/[^\d+]/g, '');
 }
 
-async function findContact(supabase, { id, email, phone }) {
-  if (id) {
-    const { data, error } = await supabase.from('contacts').select('id').eq('id', id).maybeSingle();
-    if (error) throw error;
-    if (data?.id) return data;
+async function findContacts(supabase, { id, email, phone }) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedPhone = cleanPhone(phone);
+  const { data, error } = await supabase.from('contacts').select('id,email,phone');
+  if (error) throw error;
+
+  const contacts = data || [];
+  const exactId = contacts.find((contact) => contact.id === id);
+  if (exactId) return [exactId];
+
+  if (normalizedEmail) {
+    const emailMatches = contacts.filter((contact) => String(contact.email || '').trim().toLowerCase() === normalizedEmail);
+    if (emailMatches.length) return emailMatches;
   }
 
-  if (email) {
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('email', String(email).trim().toLowerCase())
-      .maybeSingle();
-    if (error) throw error;
-    if (data?.id) return data;
+  if (normalizedPhone) {
+    return contacts.filter((contact) => cleanPhone(contact.phone) === normalizedPhone);
   }
 
-  if (phone) {
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('phone', cleanPhone(phone))
-      .maybeSingle();
-    if (error) throw error;
-    if (data?.id) return data;
-  }
-
-  return null;
+  return [];
 }
 
 export async function DELETE(request, { params }) {
@@ -61,20 +53,20 @@ export async function DELETE(request, { params }) {
   }
 
   const supabase = getSupabaseAdmin();
-  let existing = null;
+  let existing = [];
   try {
-    existing = await findContact(supabase, { id, email, phone });
+    existing = await findContacts(supabase, { id, email, phone });
   } catch (findError) {
     return NextResponse.json({ error: findError.message }, { status: 500 });
   }
-  if (!existing?.id) return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
+  if (!existing.length) return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
 
   const { error } = await supabase
     .from('contacts')
     .delete()
-    .eq('id', existing.id);
+    .in('id', existing.map((contact) => contact.id));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, id: existing.id });
+  return NextResponse.json({ ok: true, deleted: existing.length, ids: existing.map((contact) => contact.id) });
 }
