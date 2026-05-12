@@ -14,6 +14,16 @@ If you want to sell a property, please add location, property type, size, expect
 Regards,
 Noman Properties`;
 
+const initialWhatsApp = `Dear {{name}},
+
+You shared your details in the green list for {{serviceCategory}} in {{area}}.
+
+Please submit your property details here:
+{{formLink}}
+
+Regards,
+Noman Properties`;
+
 function escapeText(value) {
   return value || '-';
 }
@@ -26,6 +36,7 @@ export default function Dashboard() {
   const [query, setQuery] = useState('');
   const [subject, setSubject] = useState('Property details required - Noman Properties');
   const [body, setBody] = useState(initialEmail);
+  const [whatsAppBody, setWhatsAppBody] = useState(initialWhatsApp);
   const [message, setMessage] = useState('');
   const [importMessage, setImportMessage] = useState('');
 
@@ -67,6 +78,12 @@ export default function Dashboard() {
       .replaceAll('{{propertyType}}', contact?.property_type || 'property')
       .replaceAll('{{serviceCategory}}', contact?.service_category || 'property requirement')
       .replaceAll('{{formLink}}', contact ? formLink(contact) : '');
+  }
+
+  function whatsAppLink(contact) {
+    const phone = String(contact?.phone || '').replace(/[^\d]/g, '');
+    if (!phone) return '';
+    return `https://wa.me/${phone}?text=${encodeURIComponent(renderTemplate(whatsAppBody, contact))}`;
   }
 
   async function importFile(event) {
@@ -114,6 +131,15 @@ export default function Dashboard() {
     if (checked) next.add(id);
     else next.delete(id);
     setSelected(next);
+  }
+
+  function openSelectedWhatsApp() {
+    const first = contacts.find((contact) => selected.has(contact.id) && contact.phone);
+    if (!first) {
+      setMessage('Please select a contact with phone number first.');
+      return;
+    }
+    window.open(whatsAppLink(first), '_blank', 'noopener,noreferrer');
   }
 
   return (
@@ -166,6 +192,18 @@ export default function Dashboard() {
           </div>
         </section>
 
+        <section className="band whats-app-band">
+          <div className="table-toolbar">
+            <div>
+              <h2>WhatsApp Follow-up</h2>
+              <p>Open a prefilled WhatsApp message for the selected client.</p>
+            </div>
+            <button type="button" onClick={openSelectedWhatsApp}>Open WhatsApp</button>
+          </div>
+          <textarea rows={5} value={whatsAppBody} onChange={(event) => setWhatsAppBody(event.target.value)} />
+          <p className="note">{'Variables: {{name}}, {{area}}, {{propertyType}}, {{serviceCategory}}, {{formLink}}'}</p>
+        </section>
+
         <section className="band table-band">
           <div className="table-toolbar">
             <div>
@@ -190,6 +228,7 @@ export default function Dashboard() {
                   <th>Phone</th>
                   <th>Status</th>
                   <th>Form</th>
+                  <th>WhatsApp</th>
                 </tr>
               </thead>
               <tbody>
@@ -204,6 +243,7 @@ export default function Dashboard() {
                     <td>{escapeText(contact.phone)}</td>
                     <td><span className={`badge ${contact.status}`}>{contact.status || 'ready'}</span></td>
                     <td><a className="link-button" href={formLink(contact)} target="_blank">Open</a></td>
+                    <td>{contact.phone ? <a className="link-button" href={whatsAppLink(contact)} target="_blank">Message</a> : '-'}</td>
                   </tr>
                 ))}
               </tbody>

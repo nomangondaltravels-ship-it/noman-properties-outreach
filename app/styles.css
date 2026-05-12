@@ -186,6 +186,11 @@ button.primary {
   padding: 20px;
 }
 
+.whats-app-band {
+  margin-top: 18px;
+  padding: 20px;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);
