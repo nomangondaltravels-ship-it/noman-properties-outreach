@@ -62,7 +62,7 @@ async function runAutoEmail(request) {
       const subject = renderTemplate(subjectTemplate || categoryTemplate.subject || defaultEmailSubject, contact);
       const body = renderTemplate(bodyTemplate || categoryTemplate.body || defaultEmailBody, contact);
       await sendContactEmail({ transporter, contact, subject, body });
-      await supabase
+      const { error: updateError } = await supabase
         .from('contacts')
         .update({
           status: 'emailed',
@@ -70,6 +70,7 @@ async function runAutoEmail(request) {
           updated_at: new Date().toISOString()
         })
         .eq('id', contact.id);
+      if (updateError) throw updateError;
       results.push({ id: contact.id, email: contact.email, status: 'sent' });
     } catch (sendError) {
       results.push({ id: contact.id, email: contact.email, status: 'failed', error: sendError.message });
