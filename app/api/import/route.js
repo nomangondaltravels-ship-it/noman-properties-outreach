@@ -184,6 +184,9 @@ export async function POST(request) {
     }
   }
 
-  const { count } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
+  const { count } = await supabase
+    .from('contacts')
+    .select('*', { count: 'exact', head: true })
+    .neq('status', 'deleted');
   return NextResponse.json({ added, updated, total: count || 0, items });
 }

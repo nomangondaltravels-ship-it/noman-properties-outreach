@@ -38,6 +38,15 @@ function matchingContacts(contacts, { id, email, phone }) {
   return [];
 }
 
+async function visibleMatches(request, identifiers) {
+  const url = new URL('/api/contacts', request.url);
+  url.searchParams.set('t', String(Date.now()));
+  const contactResponse = await fetch(url, { cache: 'no-store' });
+  if (!contactResponse.ok) return [];
+  const contactData = await contactResponse.json();
+  return matchingContacts(contactData.contacts || [], identifiers);
+}
+
 export async function POST(request) {
   const payload = await readPayload(request);
   const id = String(payload.id || '').trim();
@@ -53,15 +62,7 @@ export async function POST(request) {
   if (contactsError) return NextResponse.json({ error: contactsError.message }, { status: 500 });
 
   let matches = matchingContacts(contacts || [], { id, email, phone });
-  if (!matches.length) {
-    const url = new URL('/api/contacts', request.url);
-    url.searchParams.set('t', String(Date.now()));
-    const contactResponse = await fetch(url, { cache: 'no-store' });
-    if (contactResponse.ok) {
-      const contactData = await contactResponse.json();
-      matches = matchingContacts(contactData.contacts || [], { id, email, phone });
-    }
-  }
+  if (!matches.length) matches = await visibleMatches(request, { id, email, phone });
 
   if (!matches.length) {
     return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
@@ -73,6 +74,15 @@ export async function POST(request) {
 
   const { error: deleteError } = await supabase.from('contacts').delete().in('id', ids);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+
+  const stillVisible = await visibleMatches(request, { id, email, phone });
+  if (stillVisible.length) {
+    const { error: archiveError } = await supabase
+      .from('contacts')
+      .update({ status: 'deleted', updated_at: new Date().toISOString() })
+      .in('id', stillVisible.map((contact) => contact.id));
+    if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true, deleted: ids.length, ids });
 }
