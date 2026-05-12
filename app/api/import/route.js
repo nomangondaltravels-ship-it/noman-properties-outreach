@@ -135,6 +135,12 @@ export async function POST(request) {
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const incoming = parseContacts(sheet);
 
+  if (!incoming.length) {
+    return NextResponse.json({
+      error: 'No contacts found. Please export from Apple Numbers as Excel (.xlsx) or CSV, with columns in this order: Name, Service Category, Property Type, Area, Budget, Email, Phone, Subscription End Date.'
+    }, { status: 400 });
+  }
+
   const supabase = getSupabaseAdmin();
   const { data: existingContacts, error: existingError } = await supabase.from('contacts').select('*');
   if (existingError) return NextResponse.json({ error: existingError.message }, { status: 500 });
