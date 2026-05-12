@@ -177,7 +177,7 @@ export default function Dashboard() {
               <input type="file" name="file" accept=".xlsx,.xls,.csv" required />
               <button type="submit">Import Contacts</button>
             </form>
-            <p className="note">Supported columns: Name, Service Category, Property Type, Area, Budget (AED), Email, Phone, Subscription End Date.</p>
+            <p className="note">Supported: header sheet or Numbers export. Headerless order: Name, Service Category, Property Type, Area, Budget, Email, Phone, Subscription End Date.</p>
             {importMessage && <div className="notice">{importMessage}</div>}
           </div>
 

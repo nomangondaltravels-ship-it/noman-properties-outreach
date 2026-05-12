@@ -21,6 +21,17 @@ const headerMap = {
   subscriptionenddate: 'subscription_end_date'
 };
 
+const positionalColumns = [
+  'name',
+  'service_category',
+  'property_type',
+  'area',
+  'budget',
+  'email',
+  'phone',
+  'subscription_end_date'
+];
+
 function normalizeHeader(value) {
   return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
@@ -53,10 +64,65 @@ function rowToContact(row) {
   };
 }
 
+function rowArrayToObject(values) {
+  return positionalColumns.reduce((row, key, index) => {
+    row[key] = values[index] ?? '';
+    return row;
+  }, {});
+}
+
+function rowToContactFromMapped(row) {
+  return rowToContact({
+    Name: row.name,
+    'Service Category': row.service_category,
+    'Property Type': row.property_type,
+    Area: row.area,
+    'Budget (AED)': row.budget,
+    Email: row.email,
+    Phone: row.phone,
+    'Subscription End Date': row.subscription_end_date
+  });
+}
+
+function nonEmptyCells(row) {
+  return row.filter((value) => clean(value)).length;
+}
+
+function recognizedHeaderCount(row) {
+  return row.filter((value) => headerMap[normalizeHeader(value)]).length;
+}
+
+function parseContacts(sheet) {
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+  const firstUsefulIndex = rawRows.findIndex((row) => nonEmptyCells(row) >= 2);
+  if (firstUsefulIndex === -1) return [];
+
+  const headerIndex = rawRows.findIndex((row) => recognizedHeaderCount(row) >= 2);
+  if (headerIndex !== -1) {
+    const headers = rawRows[headerIndex];
+    return rawRows
+      .slice(headerIndex + 1)
+      .map((values) => {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] ?? '';
+        });
+        return rowToContact(row);
+      })
+      .filter(Boolean);
+  }
+
+  return rawRows
+    .slice(firstUsefulIndex)
+    .filter((row) => nonEmptyCells(row) >= 2)
+    .map((row) => rowToContactFromMapped(rowArrayToObject(row)))
+    .filter(Boolean);
+}
+
 function contactKey(contact) {
   if (contact.email) return `email:${contact.email}`;
   if (contact.phone) return `phone:${contact.phone}`;
-  return `name:${contact.name.toLowerCase()}`;
+  return `name:${contact.name.toLowerCase()}:${contact.service_category.toLowerCase()}:${contact.area.toLowerCase()}`;
 }
 
 export async function POST(request) {
@@ -67,8 +133,7 @@ export async function POST(request) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-  const incoming = rows.map(rowToContact).filter(Boolean);
+  const incoming = parseContacts(sheet);
 
   const supabase = getSupabaseAdmin();
   const { data: existingContacts, error: existingError } = await supabase.from('contacts').select('*');
