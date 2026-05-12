@@ -141,7 +141,12 @@ export default function Dashboard() {
     const sent = data.results.filter((item) => item.status === 'sent').length;
     const failed = data.results.filter((item) => item.status === 'failed').length;
     const skipped = data.results.filter((item) => item.status === 'skipped').length;
-    setMessage(`Sent ${sent} email(s). Failed ${failed}. Skipped ${skipped}.`);
+    const details = data.results
+      .filter((item) => item.status !== 'sent')
+      .slice(0, 6)
+      .map((item) => `${item.email}: ${item.error || item.status}`)
+      .join('\n');
+    setMessage(`Sent ${sent} email(s). Failed ${failed}. Skipped ${skipped}.${details ? `\n\n${details}` : ''}`);
     await loadData();
   }
 
