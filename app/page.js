@@ -35,7 +35,11 @@ export default function Dashboard() {
   const [importMessage, setImportMessage] = useState('');
 
   async function loadData() {
-    const [configRes, dataRes] = await Promise.all([fetch('/api/config'), fetch('/api/contacts')]);
+    const cacheBust = Date.now();
+    const [configRes, dataRes] = await Promise.all([
+      fetch(`/api/config?t=${cacheBust}`, { cache: 'no-store' }),
+      fetch(`/api/contacts?t=${cacheBust}`, { cache: 'no-store' })
+    ]);
     setConfig(await configRes.json());
     const data = await dataRes.json();
     setContacts(data.contacts || []);
@@ -198,7 +202,12 @@ export default function Dashboard() {
     if (!window.confirm(`Delete ${label}? This will also remove this client's submitted response.`)) return;
 
     setMessage(`Deleting ${label}...`);
-    const response = await fetch(`/api/contacts/${contact.id}`, { method: 'DELETE' });
+    const response = await fetch(`/api/contacts/${contact.id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ id: contact.id, email: contact.email, phone: contact.phone })
+    });
     const data = await response.json();
     if (!response.ok) {
       setMessage(data.error || 'Unable to delete contact.');
