@@ -72,6 +72,18 @@ export default function Dashboard() {
     setBody(template.body);
   }
 
+  function startCampaign(key) {
+    applyTemplate(key);
+    setServiceFilter(key);
+    setStatusFilter('eligible');
+    const matching = contacts
+      .filter((contact) => normalizeCategory(contact.service_category) === key)
+      .filter((contact) => canEmailContact(contact).ok)
+      .map((contact) => contact.id);
+    setSelected(new Set(matching));
+    setMessage(`${categoryTemplates[key]?.label || 'Campaign'} campaign ready. ${matching.length} eligible contact(s) selected.`);
+  }
+
   function formLink(contact) {
     const base = (config.publicFormBaseUrl || '').replace(/\/+$/, '');
     return `${base}/form/${contact.token}`;
@@ -187,6 +199,11 @@ export default function Dashboard() {
               <span>{selected.size} selected</span>
             </div>
             <div className="stack">
+              <div className="campaign-buttons">
+                <button type="button" onClick={() => startCampaign('buy')}>Buy Campaign</button>
+                <button type="button" onClick={() => startCampaign('sell')}>Sell Campaign</button>
+                <button type="button" onClick={() => startCampaign('lease')}>Lease Campaign</button>
+              </div>
               <select value={templateKey} onChange={(event) => applyTemplate(event.target.value)}>
                 {Object.entries(categoryTemplates).map(([key, template]) => (
                   <option key={key} value={key}>{template.label} Template</option>

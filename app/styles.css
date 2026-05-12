@@ -181,6 +181,12 @@ button.primary {
   gap: 10px;
 }
 
+.campaign-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .filters select {
   min-width: 160px;
 }
@@ -362,7 +368,9 @@ label {
   }
 
   .actions,
-  .filters {
+  .filters,
+  .campaign-buttons {
     flex-direction: column;
+    display: flex;
   }
 }
