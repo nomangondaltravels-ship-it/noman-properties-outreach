@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { addDeleteMarkers } from '@/lib/deleteMarkers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,7 +51,8 @@ async function visibleMatches(request, identifiers) {
   return matchingContacts(contactData.contacts || [], identifiers);
 }
 
-async function archiveContacts(supabase, deleteIds) {
+async function archiveContacts(supabase, contacts) {
+  const deleteIds = contacts.map((contact) => contact.id);
   const timestamp = new Date().toISOString();
   const { data: archived, error: archiveError } = await supabase
     .from('contacts')
@@ -73,7 +75,17 @@ async function archiveContacts(supabase, deleteIds) {
   const removedIds = new Set((removed || []).map((contact) => contact.id));
   const failedIds = missingIds.filter((id) => !removedIds.has(id));
   if (failedIds.length) {
-    throw new Error('Delete did not change database rows. Please check SUPABASE_SERVICE_ROLE_KEY in Vercel.');
+    const markerContacts = contacts.filter((contact) => failedIds.includes(contact.id));
+    const markedIds = await addDeleteMarkers(supabase, markerContacts);
+    const stillFailedIds = failedIds.filter((id) => !markedIds.includes(id));
+    if (stillFailedIds.length) {
+      throw new Error('Delete did not change database rows. Please check SUPABASE_SERVICE_ROLE_KEY in Vercel.');
+    }
+
+    return {
+      deletedIds: [...archivedIds, ...removedIds, ...markedIds],
+      mode: archivedIds.size || removedIds.size ? 'archived-deleted-and-marked' : 'marked'
+    };
   }
 
   return { deletedIds: [...archivedIds, ...removedIds], mode: archivedIds.size ? 'archived-and-deleted' : 'deleted' };
@@ -91,7 +103,7 @@ export async function POST(request) {
   }
 
   const supabase = getSupabaseAdmin();
-  const { data: contacts, error: contactsError } = await supabase.from('contacts').select('id,email,phone');
+  const { data: contacts, error: contactsError } = await supabase.from('contacts').select('id,name,email,phone');
   if (contactsError) return NextResponse.json({ error: contactsError.message }, { status: 500 });
 
   let matches = matchingContacts(contacts || [], { id, ids, email, phone });
@@ -102,12 +114,11 @@ export async function POST(request) {
   }
 
   const deleteIds = matches.map((contact) => contact.id);
-  const { error: responseError } = await supabase.from('responses').delete().in('contact_id', deleteIds);
-  if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 });
+  await supabase.from('responses').delete().in('contact_id', deleteIds);
 
   let result;
   try {
-    result = await archiveContacts(supabase, deleteIds);
+    result = await archiveContacts(supabase, matches);
   } catch (archiveError) {
     return NextResponse.json({ error: archiveError.message }, { status: 500 });
   }
