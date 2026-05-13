@@ -58,6 +58,7 @@ export default function Dashboard() {
     const data = await dataRes.json();
     setContacts(data.contacts || []);
     setResponses(data.responses || []);
+    return { contacts: data.contacts || [], responses: data.responses || [] };
   }
 
   useEffect(() => {
@@ -270,8 +271,14 @@ export default function Dashboard() {
       setSelected(next);
       setContacts((current) => current.filter((item) => !deletedIds.includes(item.id)));
       setResponses((current) => current.filter((item) => !deletedIds.includes(item.contact_id)));
-      await loadData();
-      setMessage(`${data.deleted || deletedIds.length} contact(s) deleted. If you still see old rows, refresh the page once.`);
+      const latest = await loadData();
+      const stillVisible = latest.contacts.some((item) => deletedIds.includes(item.id));
+      if (stillVisible) {
+        setMessage('Delete saved. Refreshing the page to clear old cached rows...');
+        window.setTimeout(() => window.location.reload(), 500);
+        return;
+      }
+      setMessage(`${data.deleted || deletedIds.length} contact(s) deleted.`);
     } catch (error) {
       setMessage(error.message || 'Unable to delete contact(s).');
     } finally {
