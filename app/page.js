@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [importMessage, setImportMessage] = useState('');
   const [manualContact, setManualContact] = useState(emptyManualContact);
   const [manualMessage, setManualMessage] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   async function loadData() {
     const cacheBust = Date.now();
@@ -247,26 +248,35 @@ export default function Dashboard() {
   }
 
   async function deleteContactIds(ids, label) {
+    if (deleting) return;
+    setDeleting(true);
     setMessage(`Deleting ${label}...`);
-    const response = await fetch('/api/delete-contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ ids })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setMessage(data.error || 'Unable to delete contact(s).');
-      return;
-    }
+    try {
+      const response = await fetch(`/api/delete-contact?t=${Date.now()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ ids })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.error || 'Unable to delete contact(s).');
+        return;
+      }
 
-    const next = new Set(selected);
-    ids.forEach((id) => next.delete(id));
-    setSelected(next);
-    setContacts((current) => current.filter((item) => !ids.includes(item.id)));
-    setResponses((current) => current.filter((item) => !ids.includes(item.contact_id)));
-    setMessage(`${data.deleted || ids.length} contact(s) deleted.`);
-    await loadData();
+      const deletedIds = data.ids || ids;
+      const next = new Set(selected);
+      deletedIds.forEach((id) => next.delete(id));
+      setSelected(next);
+      setContacts((current) => current.filter((item) => !deletedIds.includes(item.id)));
+      setResponses((current) => current.filter((item) => !deletedIds.includes(item.contact_id)));
+      await loadData();
+      setMessage(`${data.deleted || deletedIds.length} contact(s) deleted. If you still see old rows, refresh the page once.`);
+    } catch (error) {
+      setMessage(error.message || 'Unable to delete contact(s).');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function deleteSelectedContacts() {
@@ -475,10 +485,10 @@ export default function Dashboard() {
                 <option value="all">All contacts</option>
                 <option value="blocked">Blocked / waiting</option>
               </select>
-              <button type="button" onClick={() => setSelected(new Set(filteredContacts.filter((contact) => canEmailContact(contact).ok).map((contact) => contact.id)))}>Select Eligible</button>
-              <button type="button" onClick={() => setSelected(new Set(filteredContacts.map((contact) => contact.id)))}>Select Visible</button>
-              <button type="button" className="danger-button bulk-danger" onClick={deleteSelectedContacts}>Delete Selected ({selected.size})</button>
-              <button type="button" className="danger-button bulk-danger" onClick={deleteVisibleContacts}>Delete Visible ({filteredContacts.length})</button>
+              <button type="button" disabled={deleting} onClick={() => setSelected(new Set(filteredContacts.filter((contact) => canEmailContact(contact).ok).map((contact) => contact.id)))}>Select Eligible</button>
+              <button type="button" disabled={deleting} onClick={() => setSelected(new Set(filteredContacts.map((contact) => contact.id)))}>Select Visible</button>
+              <button type="button" disabled={deleting} className="danger-button bulk-danger" onClick={deleteSelectedContacts}>Delete Selected ({selected.size})</button>
+              <button type="button" disabled={deleting} className="danger-button bulk-danger" onClick={deleteVisibleContacts}>Delete Visible ({filteredContacts.length})</button>
             </div>
           </div>
           <div className="table-wrap">
@@ -518,7 +528,7 @@ export default function Dashboard() {
                     </td>
                     <td><a className="link-button" href={formLink(contact)} target="_blank">Open</a></td>
                     <td>{contact.phone ? <a className="link-button" href={whatsAppLink(contact)} target="_blank">Message</a> : '-'}</td>
-                    <td><button className="danger-button" type="button" onClick={() => deleteContact(contact)}>Delete</button></td>
+                    <td><button className="danger-button" type="button" disabled={deleting} onClick={() => deleteContact(contact)}>Delete</button></td>
                   </tr>
                 ))}
               </tbody>

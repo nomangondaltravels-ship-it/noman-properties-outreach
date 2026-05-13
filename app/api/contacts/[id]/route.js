@@ -64,7 +64,7 @@ export async function DELETE(request, { params }) {
 
   const { error } = await supabase
     .from('contacts')
-    .delete()
+    .update({ status: 'deleted', updated_at: new Date().toISOString() })
     .in('id', existing.map((contact) => contact.id));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
