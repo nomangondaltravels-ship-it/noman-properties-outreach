@@ -15,6 +15,17 @@ Please submit your property details here:
 Regards,
 Xsite Real Estate`;
 
+const emptyManualContact = {
+  name: '',
+  service_category: 'Sell Property',
+  property_type: 'Unit',
+  area: 'All areas',
+  budget: 'N/A',
+  email: '',
+  phone: '',
+  subscription_end_date: ''
+};
+
 function escapeText(value) {
   return value || '-';
 }
@@ -33,6 +44,8 @@ export default function Dashboard() {
   const [whatsAppBody, setWhatsAppBody] = useState(initialWhatsApp);
   const [message, setMessage] = useState('');
   const [importMessage, setImportMessage] = useState('');
+  const [manualContact, setManualContact] = useState(emptyManualContact);
+  const [manualMessage, setManualMessage] = useState('');
 
   async function loadData() {
     const cacheBust = Date.now();
@@ -154,6 +167,35 @@ export default function Dashboard() {
     await loadData();
   }
 
+  function updateManualContact(field, value) {
+    setManualContact((current) => ({ ...current, [field]: value }));
+  }
+
+  async function addManualContact(event) {
+    event.preventDefault();
+    setManualMessage('Saving contact...');
+
+    const response = await fetch('/api/manual-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify(manualContact)
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setManualMessage(data.error || 'Unable to save contact.');
+      return;
+    }
+
+    setManualContact(emptyManualContact);
+    setQuery('');
+    setServiceFilter('all');
+    setStatusFilter('all');
+    setSelected(new Set([data.contact.id]));
+    setManualMessage(`Manual contact ${data.action}: ${data.contact.name || data.contact.email || data.contact.phone}. Total contacts: ${data.total}.`);
+    await loadData();
+  }
+
   async function sendCampaign(dryRun) {
     const ids = [...selected];
     if (!ids.length) {
@@ -262,6 +304,88 @@ export default function Dashboard() {
             </form>
             <p className="note">Supported: header sheet or Numbers export. Headerless order: Name, Service Category, Property Type, Area, Budget, Email, Phone, Subscription End Date.</p>
             {importMessage && <div className="notice">{importMessage}</div>}
+
+            <div className="manual-add">
+              <div className="section-head">
+                <h3>Add Contact Manually</h3>
+                <span>One client</span>
+              </div>
+              <form className="manual-grid" onSubmit={addManualContact}>
+                <label>
+                  Name
+                  <input
+                    value={manualContact.name}
+                    onChange={(event) => updateManualContact('name', event.target.value)}
+                    placeholder="Client full name"
+                    required
+                  />
+                </label>
+                <label>
+                  Service
+                  <select
+                    value={manualContact.service_category}
+                    onChange={(event) => updateManualContact('service_category', event.target.value)}
+                  >
+                    <option>Sell Property</option>
+                    <option>Buy Property</option>
+                    <option>Lease Property</option>
+                    <option>All Services</option>
+                  </select>
+                </label>
+                <label>
+                  Property Type
+                  <input
+                    value={manualContact.property_type}
+                    onChange={(event) => updateManualContact('property_type', event.target.value)}
+                    placeholder="Unit, Villa, Land"
+                  />
+                </label>
+                <label>
+                  Area
+                  <input
+                    value={manualContact.area}
+                    onChange={(event) => updateManualContact('area', event.target.value)}
+                    placeholder="Business Bay"
+                  />
+                </label>
+                <label>
+                  Budget
+                  <input
+                    value={manualContact.budget}
+                    onChange={(event) => updateManualContact('budget', event.target.value)}
+                    placeholder="N/A"
+                  />
+                </label>
+                <label>
+                  Email
+                  <input
+                    type="email"
+                    value={manualContact.email}
+                    onChange={(event) => updateManualContact('email', event.target.value)}
+                    placeholder="client@email.com"
+                  />
+                </label>
+                <label>
+                  Phone
+                  <input
+                    value={manualContact.phone}
+                    onChange={(event) => updateManualContact('phone', event.target.value)}
+                    placeholder="9715..."
+                  />
+                </label>
+                <label>
+                  Subscription End Date
+                  <input
+                    value={manualContact.subscription_end_date}
+                    onChange={(event) => updateManualContact('subscription_end_date', event.target.value)}
+                    placeholder="DD/MM/YYYY"
+                  />
+                </label>
+                <button type="submit" className="primary wide">Save Manual Contact</button>
+              </form>
+              <p className="note">Name is required. Add at least email or phone. If the same email/phone already exists, it will be updated.</p>
+              {manualMessage && <div className="notice">{manualMessage}</div>}
+            </div>
           </div>
 
           <div className="panel">

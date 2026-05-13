@@ -143,6 +143,39 @@ main {
   gap: 12px;
 }
 
+.manual-add {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.section-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.manual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 input,
 select,
 textarea,
@@ -379,7 +412,8 @@ label {
 
   .actions,
   .filters,
-  .campaign-buttons {
+  .campaign-buttons,
+  .manual-grid {
     flex-direction: column;
     display: flex;
   }
