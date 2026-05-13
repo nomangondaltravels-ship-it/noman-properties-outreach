@@ -265,6 +265,35 @@ export default function Dashboard() {
     await loadData();
   }
 
+  async function deleteSelectedContacts() {
+    const ids = [...selected];
+    if (!ids.length) {
+      setMessage('Please select contacts first.');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${ids.length} selected contact(s)? This will also remove their submitted responses.`)) return;
+
+    setMessage(`Deleting ${ids.length} selected contact(s)...`);
+    const response = await fetch('/api/delete-contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify({ ids })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setMessage(data.error || 'Unable to delete selected contacts.');
+      return;
+    }
+
+    setSelected(new Set());
+    setContacts((current) => current.filter((item) => !ids.includes(item.id)));
+    setResponses((current) => current.filter((item) => !ids.includes(item.contact_id)));
+    setMessage(`${data.deleted || ids.length} selected contact(s) deleted.`);
+    await loadData();
+  }
+
   function openSelectedWhatsApp() {
     const first = contacts.find((contact) => selected.has(contact.id) && contact.phone);
     if (!first) {
@@ -448,6 +477,7 @@ export default function Dashboard() {
                 <option value="blocked">Blocked / waiting</option>
               </select>
               <button type="button" onClick={() => setSelected(new Set(filteredContacts.filter((contact) => canEmailContact(contact).ok).map((contact) => contact.id)))}>Select Eligible</button>
+              <button type="button" className="danger-button bulk-danger" onClick={deleteSelectedContacts}>Delete Selected ({selected.size})</button>
             </div>
           </div>
           <div className="table-wrap">

@@ -321,6 +321,11 @@ td input[type="checkbox"] {
   font-size: 12px;
 }
 
+.bulk-danger {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
 .responses {
   display: grid;
   gap: 10px;

@@ -20,7 +20,10 @@ async function readPayload(request) {
   }
 }
 
-function matchingContacts(contacts, { id, email, phone }) {
+function matchingContacts(contacts, { id, ids = [], email, phone }) {
+  const idSet = new Set(ids.map((value) => String(value || '').trim()).filter(Boolean));
+  if (idSet.size) return contacts.filter((contact) => idSet.has(contact.id));
+
   const exactId = contacts.find((contact) => contact.id === id);
   if (exactId) return [exactId];
 
@@ -50,10 +53,11 @@ async function visibleMatches(request, identifiers) {
 export async function POST(request) {
   const payload = await readPayload(request);
   const id = String(payload.id || '').trim();
+  const ids = Array.isArray(payload.ids) ? payload.ids.map((value) => String(value || '').trim()).filter(Boolean) : [];
   const email = payload.email || '';
   const phone = payload.phone || '';
 
-  if (!id && !email && !phone) {
+  if (!id && !ids.length && !email && !phone) {
     return NextResponse.json({ error: 'Contact id, email, or phone is required.' }, { status: 400 });
   }
 
@@ -61,21 +65,21 @@ export async function POST(request) {
   const { data: contacts, error: contactsError } = await supabase.from('contacts').select('id,email,phone');
   if (contactsError) return NextResponse.json({ error: contactsError.message }, { status: 500 });
 
-  let matches = matchingContacts(contacts || [], { id, email, phone });
-  if (!matches.length) matches = await visibleMatches(request, { id, email, phone });
+  let matches = matchingContacts(contacts || [], { id, ids, email, phone });
+  if (!matches.length) matches = await visibleMatches(request, { id, ids, email, phone });
 
   if (!matches.length) {
     return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
   }
 
-  const ids = matches.map((contact) => contact.id);
-  const { error: responseError } = await supabase.from('responses').delete().in('contact_id', ids);
+  const deleteIds = matches.map((contact) => contact.id);
+  const { error: responseError } = await supabase.from('responses').delete().in('contact_id', deleteIds);
   if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 });
 
-  const { error: deleteError } = await supabase.from('contacts').delete().in('id', ids);
+  const { error: deleteError } = await supabase.from('contacts').delete().in('id', deleteIds);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
-  const stillVisible = await visibleMatches(request, { id, email, phone });
+  const stillVisible = await visibleMatches(request, { id, ids, email, phone });
   if (stillVisible.length) {
     const { error: archiveError } = await supabase
       .from('contacts')
@@ -84,5 +88,5 @@ export async function POST(request) {
     if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, deleted: ids.length, ids });
+  return NextResponse.json({ ok: true, deleted: deleteIds.length, ids: deleteIds });
 }
