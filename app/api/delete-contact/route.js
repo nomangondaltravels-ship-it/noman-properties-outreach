@@ -76,17 +76,11 @@ export async function POST(request) {
   const { error: responseError } = await supabase.from('responses').delete().in('contact_id', deleteIds);
   if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 });
 
-  const { error: deleteError } = await supabase.from('contacts').delete().in('id', deleteIds);
-  if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
-
-  const stillVisible = await visibleMatches(request, { id, ids, email, phone });
-  if (stillVisible.length) {
-    const { error: archiveError } = await supabase
-      .from('contacts')
-      .update({ status: 'deleted', updated_at: new Date().toISOString() })
-      .in('id', stillVisible.map((contact) => contact.id));
-    if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 500 });
-  }
+  const { error: archiveError } = await supabase
+    .from('contacts')
+    .update({ status: 'deleted', updated_at: new Date().toISOString() })
+    .in('id', deleteIds);
+  if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 500 });
 
   return NextResponse.json({ ok: true, deleted: deleteIds.length, ids: deleteIds });
 }

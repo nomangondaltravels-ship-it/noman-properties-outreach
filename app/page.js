@@ -243,38 +243,11 @@ export default function Dashboard() {
     const label = contact.name || contact.email || contact.phone || 'this contact';
     if (!window.confirm(`Delete ${label}? This will also remove this client's submitted response.`)) return;
 
-    setMessage(`Deleting ${label}...`);
-    const response = await fetch('/api/delete-contact', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      cache: 'no-store',
-      body: JSON.stringify({ id: contact.id, email: contact.email, phone: contact.phone })
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setMessage(data.error || 'Unable to delete contact.');
-      return;
-    }
-
-    const next = new Set(selected);
-    next.delete(contact.id);
-    setSelected(next);
-    setContacts((current) => current.filter((item) => item.id !== contact.id));
-    setResponses((current) => current.filter((item) => item.contact_id !== contact.id));
-    setMessage(`${label} deleted.`);
-    await loadData();
+    await deleteContactIds([contact.id], label);
   }
 
-  async function deleteSelectedContacts() {
-    const ids = [...selected];
-    if (!ids.length) {
-      setMessage('Please select contacts first.');
-      return;
-    }
-
-    if (!window.confirm(`Delete ${ids.length} selected contact(s)? This will also remove their submitted responses.`)) return;
-
-    setMessage(`Deleting ${ids.length} selected contact(s)...`);
+  async function deleteContactIds(ids, label) {
+    setMessage(`Deleting ${label}...`);
     const response = await fetch('/api/delete-contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -283,15 +256,41 @@ export default function Dashboard() {
     });
     const data = await response.json();
     if (!response.ok) {
-      setMessage(data.error || 'Unable to delete selected contacts.');
+      setMessage(data.error || 'Unable to delete contact(s).');
       return;
     }
 
-    setSelected(new Set());
+    const next = new Set(selected);
+    ids.forEach((id) => next.delete(id));
+    setSelected(next);
     setContacts((current) => current.filter((item) => !ids.includes(item.id)));
     setResponses((current) => current.filter((item) => !ids.includes(item.contact_id)));
-    setMessage(`${data.deleted || ids.length} selected contact(s) deleted.`);
+    setMessage(`${data.deleted || ids.length} contact(s) deleted.`);
     await loadData();
+  }
+
+  async function deleteSelectedContacts() {
+    const ids = [...selected];
+    if (!ids.length) {
+      setMessage('Please tick contact checkboxes first, or use Select Visible.');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${ids.length} selected contact(s)? This will also remove their submitted responses.`)) return;
+
+    await deleteContactIds(ids, `${ids.length} selected contact(s)`);
+  }
+
+  async function deleteVisibleContacts() {
+    const ids = filteredContacts.map((contact) => contact.id);
+    if (!ids.length) {
+      setMessage('No visible contacts to delete.');
+      return;
+    }
+
+    if (!window.confirm(`Delete all ${ids.length} visible contact(s)? This will also remove their submitted responses.`)) return;
+
+    await deleteContactIds(ids, `${ids.length} visible contact(s)`);
   }
 
   function openSelectedWhatsApp() {
@@ -477,7 +476,9 @@ export default function Dashboard() {
                 <option value="blocked">Blocked / waiting</option>
               </select>
               <button type="button" onClick={() => setSelected(new Set(filteredContacts.filter((contact) => canEmailContact(contact).ok).map((contact) => contact.id)))}>Select Eligible</button>
+              <button type="button" onClick={() => setSelected(new Set(filteredContacts.map((contact) => contact.id)))}>Select Visible</button>
               <button type="button" className="danger-button bulk-danger" onClick={deleteSelectedContacts}>Delete Selected ({selected.size})</button>
+              <button type="button" className="danger-button bulk-danger" onClick={deleteVisibleContacts}>Delete Visible ({filteredContacts.length})</button>
             </div>
           </div>
           <div className="table-wrap">
