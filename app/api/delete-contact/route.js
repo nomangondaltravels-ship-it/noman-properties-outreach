@@ -50,6 +50,35 @@ async function visibleMatches(request, identifiers) {
   return matchingContacts(contactData.contacts || [], identifiers);
 }
 
+async function archiveContacts(supabase, deleteIds) {
+  const timestamp = new Date().toISOString();
+  const { data: archived, error: archiveError } = await supabase
+    .from('contacts')
+    .update({ status: 'deleted', updated_at: timestamp })
+    .in('id', deleteIds)
+    .select('id');
+  if (archiveError) throw archiveError;
+
+  const archivedIds = new Set((archived || []).map((contact) => contact.id));
+  const missingIds = deleteIds.filter((id) => !archivedIds.has(id));
+  if (!missingIds.length) return { deletedIds: deleteIds, mode: 'archived' };
+
+  const { data: removed, error: deleteError } = await supabase
+    .from('contacts')
+    .delete()
+    .in('id', missingIds)
+    .select('id');
+  if (deleteError) throw deleteError;
+
+  const removedIds = new Set((removed || []).map((contact) => contact.id));
+  const failedIds = missingIds.filter((id) => !removedIds.has(id));
+  if (failedIds.length) {
+    throw new Error('Delete did not change database rows. Please check SUPABASE_SERVICE_ROLE_KEY in Vercel.');
+  }
+
+  return { deletedIds: [...archivedIds, ...removedIds], mode: archivedIds.size ? 'archived-and-deleted' : 'deleted' };
+}
+
 export async function POST(request) {
   const payload = await readPayload(request);
   const id = String(payload.id || '').trim();
@@ -76,11 +105,12 @@ export async function POST(request) {
   const { error: responseError } = await supabase.from('responses').delete().in('contact_id', deleteIds);
   if (responseError) return NextResponse.json({ error: responseError.message }, { status: 500 });
 
-  const { error: archiveError } = await supabase
-    .from('contacts')
-    .update({ status: 'deleted', updated_at: new Date().toISOString() })
-    .in('id', deleteIds);
-  if (archiveError) return NextResponse.json({ error: archiveError.message }, { status: 500 });
+  let result;
+  try {
+    result = await archiveContacts(supabase, deleteIds);
+  } catch (archiveError) {
+    return NextResponse.json({ error: archiveError.message }, { status: 500 });
+  }
 
-  return NextResponse.json({ ok: true, deleted: deleteIds.length, ids: deleteIds });
+  return NextResponse.json({ ok: true, deleted: result.deletedIds.length, ids: result.deletedIds, mode: result.mode });
 }

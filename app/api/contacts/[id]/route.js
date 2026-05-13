@@ -62,12 +62,34 @@ export async function DELETE(request, { params }) {
   }
   if (!existing.length) return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });
 
-  const { error } = await supabase
+  const deleteIds = existing.map((contact) => contact.id);
+  const { data: archived, error } = await supabase
     .from('contacts')
     .update({ status: 'deleted', updated_at: new Date().toISOString() })
-    .in('id', existing.map((contact) => contact.id));
+    .in('id', deleteIds)
+    .select('id');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, deleted: existing.length, ids: existing.map((contact) => contact.id) });
+  const archivedIds = new Set((archived || []).map((contact) => contact.id));
+  const missingIds = deleteIds.filter((contactId) => !archivedIds.has(contactId));
+  if (missingIds.length) {
+    const { data: removed, error: deleteError } = await supabase
+      .from('contacts')
+      .delete()
+      .in('id', missingIds)
+      .select('id');
+    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
+
+    const removedIds = new Set((removed || []).map((contact) => contact.id));
+    const failedIds = missingIds.filter((contactId) => !removedIds.has(contactId));
+    if (failedIds.length) {
+      return NextResponse.json(
+        { error: 'Delete did not change database rows. Please check SUPABASE_SERVICE_ROLE_KEY in Vercel.' },
+        { status: 500 }
+      );
+    }
+  }
+
+  return NextResponse.json({ ok: true, deleted: existing.length, ids: deleteIds });
 }
