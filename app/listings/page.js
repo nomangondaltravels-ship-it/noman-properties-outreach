@@ -20,6 +20,10 @@ const emptyListing = {
   notes: ''
 };
 
+function isAvailableStatus(value) {
+  return ['', 'available', 'active', 'live', 'ready'].includes(String(value || '').trim().toLowerCase());
+}
+
 function firstPhoto(value) {
   return String(value || '')
     .split(',')
@@ -86,7 +90,7 @@ export default function ListingsPage() {
 
   const saleCount = listings.filter((listing) => listing.listing_type === 'sale').length;
   const rentCount = listings.filter((listing) => listing.listing_type === 'rent').length;
-  const availableCount = listings.filter((listing) => String(listing.status || '').toLowerCase() !== 'closed').length;
+  const availableCount = listings.filter((listing) => isAvailableStatus(listing.status)).length;
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -273,6 +277,17 @@ export default function ListingsPage() {
                 />
               </label>
               <label>
+                Listing Status
+                <select value={form.status} onChange={(event) => updateForm('status', event.target.value)}>
+                  <option value="available">Available / show on public link</option>
+                  <option value="draft">Draft / hide</option>
+                  <option value="unavailable">Unavailable / hide</option>
+                  <option value="sold">Sold / hide</option>
+                  <option value="rented">Rented / hide</option>
+                  <option value="closed">Closed / hide</option>
+                </select>
+              </label>
+              <label>
                 Availability
                 <input
                   value={form.availability}
@@ -355,7 +370,7 @@ export default function ListingsPage() {
                       {listing.notes && <p className="row-note">{listing.notes}</p>}
                       {listing.permit_number && <p className="row-note">Permit: {listing.permit_number}</p>}
                       <div className="listing-actions">
-                        <span>{display(listing.availability)}</span>
+                        <span>{display(listing.status)} · {display(listing.availability)}</span>
                         <button
                           type="button"
                           className="danger-button"

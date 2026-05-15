@@ -4,6 +4,7 @@ import {
   PROPERTY_LISTING_DELETE_SUBJECT,
   PROPERTY_LISTING_SUBJECT,
   deleteListing,
+  isPublicAvailableListing,
   normalizeListingPayload,
   rowsToListings,
   saveListing
@@ -15,6 +16,9 @@ export const runtime = 'nodejs';
 export async function GET(request) {
   const supabase = getSupabaseAdmin();
   const type = request.nextUrl.searchParams.get('type') || 'all';
+  const availableOnly = ['1', 'true', 'yes'].includes(
+    String(request.nextUrl.searchParams.get('available') || '').toLowerCase()
+  );
 
   const [listingResult, deletedResult] = await Promise.all([
     supabase
@@ -37,6 +41,9 @@ export async function GET(request) {
   }
 
   let listings = rowsToListings(listingResult.data || [], deletedResult.data || []);
+  if (availableOnly) {
+    listings = listings.filter(isPublicAvailableListing);
+  }
   if (type === 'sale' || type === 'rent') {
     listings = listings.filter((listing) => listing.listing_type === type);
   }

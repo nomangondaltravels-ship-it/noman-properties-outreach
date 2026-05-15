@@ -41,7 +41,7 @@ export default function PublicPropertiesPage() {
     const cacheBust = Date.now();
     const [configResponse, listingResponse] = await Promise.all([
       fetch(`/api/config?t=${cacheBust}`, { cache: 'no-store' }),
-      fetch(`/api/listings?t=${cacheBust}`, { cache: 'no-store' })
+      fetch(`/api/listings?available=true&t=${cacheBust}`, { cache: 'no-store' })
     ]);
     const configData = await configResponse.json();
     const listingData = await listingResponse.json();
