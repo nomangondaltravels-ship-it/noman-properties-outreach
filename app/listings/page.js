@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const emptyListing = {
   listing_type: 'sale',
@@ -24,11 +24,11 @@ function isAvailableStatus(value) {
   return ['', 'available', 'active', 'live', 'ready'].includes(String(value || '').trim().toLowerCase());
 }
 
-function firstPhoto(value) {
+function photoList(value) {
   return String(value || '')
     .split(',')
     .map((item) => item.trim())
-    .find(Boolean);
+    .filter(Boolean);
 }
 
 function display(value) {
@@ -53,6 +53,10 @@ export default function ListingsPage() {
   const [deletingId, setDeletingId] = useState('');
   const [shareUrl, setShareUrl] = useState('/properties');
   const [shareMessage, setShareMessage] = useState('');
+  const [photoFiles, setPhotoFiles] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const photoInputRef = useRef(null);
 
   async function loadListings() {
     setLoading(true);
@@ -96,6 +100,96 @@ export default function ListingsPage() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function resetPhotoSelection() {
+    setPhotoPreviews((current) => {
+      current.forEach((preview) => URL.revokeObjectURL(preview.url));
+      return [];
+    });
+    setPhotoFiles([]);
+    if (photoInputRef.current) {
+      photoInputRef.current.value = '';
+    }
+  }
+
+  function updatePhotoFiles(event) {
+    const files = Array.from(event.target.files || []).filter((file) => file.type.startsWith('image/')).slice(0, 10);
+    setPhotoPreviews((current) => {
+      current.forEach((preview) => URL.revokeObjectURL(preview.url));
+      return files.map((file) => ({
+        name: file.name,
+        url: URL.createObjectURL(file)
+      }));
+    });
+    setPhotoFiles(files);
+  }
+
+  async function compressImage(file) {
+    if (!file.type.startsWith('image/')) throw new Error(`${file.name} is not an image.`);
+    if (!window.createImageBitmap) return file;
+
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) return file;
+
+    const maxSide = 1800;
+    const largestSide = Math.max(bitmap.width, bitmap.height);
+    if (file.size <= 1200000 && largestSide <= maxSide) {
+      bitmap.close?.();
+      return file;
+    }
+
+    const scale = Math.min(1, maxSide / largestSide);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const context = canvas.getContext('2d');
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+    if (!blob) return file;
+
+    const baseName = file.name.replace(/\.[^.]+$/, '') || 'property-photo';
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' });
+  }
+
+  async function uploadSelectedPhotos() {
+    if (!photoFiles.length) return [];
+
+    setUploadingPhotos(true);
+    const formData = new FormData();
+    for (const file of photoFiles) {
+      formData.append('photos', await compressImage(file));
+    }
+
+    const response = await fetch('/api/listing-photos', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await response.json();
+    setUploadingPhotos(false);
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Photo upload failed.');
+    }
+
+    return data.photos || [];
+  }
+
+  function listingDetailUrl(listing) {
+    if (typeof window === 'undefined') return `/properties/${listing.id}`;
+    return `${window.location.origin}/properties/${listing.id}`;
+  }
+
+  async function copyListingLink(listing) {
+    const url = listingDetailUrl(listing);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMessage(`Listing link copied: ${url}`);
+    } catch {
+      setShareMessage(`Listing link: ${url}`);
+    }
+  }
+
   async function copyPublicLink() {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -108,12 +202,25 @@ export default function ListingsPage() {
   async function saveListing(event) {
     event.preventDefault();
     setSaving(true);
+    setMessage(photoFiles.length ? 'Uploading photos...' : 'Saving listing...');
+
+    let uploadedPhotos = [];
+    try {
+      uploadedPhotos = await uploadSelectedPhotos();
+    } catch (error) {
+      setMessage(error.message || 'Unable to upload photos.');
+      setSaving(false);
+      setUploadingPhotos(false);
+      return;
+    }
+
+    const photos = [...photoList(form.photos), ...uploadedPhotos].join(', ');
     setMessage('Saving listing...');
 
     const response = await fetch('/api/listings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
+      body: JSON.stringify({ ...form, photos })
     });
     const data = await response.json();
 
@@ -124,6 +231,7 @@ export default function ListingsPage() {
     }
 
     setForm(emptyListing);
+    resetPhotoSelection();
     setMessage(`Listing added: ${data.listing.title}`);
     setSaving(false);
     await loadListings();
@@ -303,12 +411,34 @@ export default function ListingsPage() {
                   placeholder="Optional"
                 />
               </label>
-              <label>
-                Photo URL
+              <label className="wide photo-upload-field">
+                Upload Photos
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={updatePhotoFiles}
+                />
+                <span>Choose up to 10 photos. First photo will become the main listing image.</span>
+              </label>
+              {photoPreviews.length > 0 && (
+                <div className="photo-preview-grid wide">
+                  {photoPreviews.map((photo) => (
+                    <figure className="photo-preview" key={photo.url}>
+                      <img src={photo.url} alt={photo.name} />
+                      <figcaption>{photo.name}</figcaption>
+                    </figure>
+                  ))}
+                  <button type="button" className="small-action" onClick={resetPhotoSelection}>Clear Photos</button>
+                </div>
+              )}
+              <label className="wide">
+                Photo URLs (optional)
                 <input
                   value={form.photos}
                   onChange={(event) => updateForm('photos', event.target.value)}
-                  placeholder="Optional image link"
+                  placeholder="Paste image links separated with commas"
                 />
               </label>
               <label className="wide">
@@ -321,7 +451,7 @@ export default function ListingsPage() {
                 />
               </label>
               <button type="submit" className="primary wide" disabled={saving}>
-                {saving ? 'Saving...' : 'Save Listing'}
+                {saving ? (uploadingPhotos ? 'Uploading Photos...' : 'Saving...') : 'Save Listing'}
               </button>
             </form>
             {message && <div className="notice preserve">{message}</div>}
@@ -341,11 +471,15 @@ export default function ListingsPage() {
             )}
             <div className="listing-card-grid">
               {filteredListings.map((listing) => {
-                const photo = firstPhoto(listing.photos);
+                const photos = photoList(listing.photos);
+                const photo = photos[0];
                 return (
                   <article className="listing-card" key={listing.id}>
                     {photo ? (
-                      <img className="listing-media" src={photo} alt={listing.title} />
+                      <div className="listing-media-wrap">
+                        <img className="listing-media" src={photo} alt={listing.title} />
+                        {photos.length > 1 && <span className="photo-count-badge">+{photos.length - 1} photos</span>}
+                      </div>
                     ) : (
                       <div className="listing-media listing-placeholder">
                         <span>{listing.listing_type === 'rent' ? 'Rent' : 'Sale'}</span>
@@ -369,6 +503,10 @@ export default function ListingsPage() {
                       {listing.building && <p className="row-note">{listing.building}</p>}
                       {listing.notes && <p className="row-note">{listing.notes}</p>}
                       {listing.permit_number && <p className="row-note">Permit: {listing.permit_number}</p>}
+                      <div className="listing-link-actions">
+                        <Link className="small-action" href={`/properties/${listing.id}`} target="_blank">Open Details</Link>
+                        <button type="button" className="small-action" onClick={() => copyListingLink(listing)}>Copy Listing Link</button>
+                      </div>
                       <div className="listing-actions">
                         <span>{display(listing.status)} · {display(listing.availability)}</span>
                         <button

@@ -15,6 +15,7 @@ export const runtime = 'nodejs';
 
 export async function GET(request) {
   const supabase = getSupabaseAdmin();
+  const id = request.nextUrl.searchParams.get('id') || '';
   const type = request.nextUrl.searchParams.get('type') || 'all';
   const availableOnly = ['1', 'true', 'yes'].includes(
     String(request.nextUrl.searchParams.get('available') || '').toLowerCase()
@@ -43,6 +44,11 @@ export async function GET(request) {
   let listings = rowsToListings(listingResult.data || [], deletedResult.data || []);
   if (availableOnly) {
     listings = listings.filter(isPublicAvailableListing);
+  }
+  if (id) {
+    const listing = listings.find((item) => item.id === id);
+    if (!listing) return NextResponse.json({ error: 'Listing not found.' }, { status: 404 });
+    return NextResponse.json({ listing });
   }
   if (type === 'sale' || type === 'rent') {
     listings = listings.filter((listing) => listing.listing_type === type);

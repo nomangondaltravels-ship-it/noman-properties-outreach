@@ -1,12 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-function firstPhoto(value) {
+function photoList(value) {
   return String(value || '')
     .split(',')
     .map((item) => item.trim())
-    .find(Boolean);
+    .filter(Boolean);
 }
 
 function display(value) {
@@ -157,12 +158,16 @@ export default function PublicPropertiesPage() {
 
         <section className="public-card-grid">
           {filteredListings.map((listing) => {
-            const photo = firstPhoto(listing.photos);
+            const photos = photoList(listing.photos);
+            const photo = photos[0];
             const whatsapp = whatsAppLink(listing);
             return (
               <article className="public-property-card" key={listing.id}>
                 {photo ? (
-                  <img className="public-property-media" src={photo} alt={listing.title} />
+                  <div className="public-property-media-wrap">
+                    <img className="public-property-media" src={photo} alt={listing.title} />
+                    {photos.length > 1 && <span className="photo-count-badge">+{photos.length - 1} photos</span>}
+                  </div>
                 ) : (
                   <div className="public-property-media public-property-placeholder">
                     <span>{listingTypeLabel(listing.listing_type)}</span>
@@ -187,12 +192,12 @@ export default function PublicPropertiesPage() {
                   {listing.notes && <p className="row-note">{listing.notes}</p>}
                   {listing.permit_number && <p className="row-note">Permit: {listing.permit_number}</p>}
                   <div className="public-property-actions">
+                    <Link className="button-link" href={`/properties/${listing.id}`}>View Details</Link>
                     {whatsapp ? (
-                      <a className="button-link" href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>
+                      <a className="button-link subtle-link" href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>
                     ) : (
-                      <a className="button-link" href={emailLink(listing)}>Email</a>
+                      <a className="button-link subtle-link" href={emailLink(listing)}>Email</a>
                     )}
-                    <a className="button-link subtle-link" href={emailLink(listing)}>Ask Details</a>
                   </div>
                 </div>
               </article>

@@ -461,6 +461,12 @@ td input[type="checkbox"] {
   background: #fff;
 }
 
+.listing-media-wrap,
+.public-property-media-wrap {
+  position: relative;
+  min-height: 100%;
+}
+
 .listing-media {
   width: 100%;
   height: 100%;
@@ -475,6 +481,18 @@ td input[type="checkbox"] {
   color: var(--green-dark);
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.photo-count-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #fff;
+  background: rgba(16, 38, 31, 0.82);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .listing-body {
@@ -547,6 +565,73 @@ td input[type="checkbox"] {
 
 .listing-actions .danger-button {
   flex: 0 0 auto;
+}
+
+.listing-link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.small-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  width: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: var(--green-dark);
+  background: #fbfdfb;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.photo-upload-field input[type="file"] {
+  min-height: auto;
+  padding: 12px;
+  background: #fbfdfb;
+}
+
+.photo-upload-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-preview {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.photo-preview img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #edf4ef;
+}
+
+.photo-preview figcaption {
+  padding: 0 8px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .share-message {
@@ -628,6 +713,7 @@ td input[type="checkbox"] {
 .public-property-media {
   width: 100%;
   aspect-ratio: 4 / 3;
+  display: block;
   object-fit: cover;
   background: #edf4ef;
 }
@@ -673,6 +759,199 @@ td input[type="checkbox"] {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 4px;
+}
+
+.property-detail-hero h1 {
+  max-width: 980px;
+  line-height: 1.05;
+}
+
+.property-detail-main {
+  display: grid;
+  gap: 18px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.property-detail-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) 380px;
+  gap: 18px;
+  align-items: start;
+}
+
+.property-gallery,
+.property-info-panel,
+.property-fact-bar,
+.property-detail-section,
+.property-loading {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.property-gallery {
+  overflow: hidden;
+}
+
+.property-main-photo {
+  min-height: 520px;
+  background: #edf4ef;
+}
+
+.property-main-photo img {
+  display: block;
+  width: 100%;
+  height: 520px;
+  object-fit: cover;
+}
+
+.property-photo-placeholder {
+  display: grid;
+  min-height: 520px;
+  place-items: center;
+  color: #eaf5ee;
+  background: linear-gradient(135deg, #19332a, #31565a);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.property-thumb-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: #fbfdfb;
+  border-top: 1px solid var(--line);
+}
+
+.property-thumb-grid button {
+  min-height: 72px;
+  padding: 0;
+  overflow: hidden;
+  border-color: transparent;
+  background: transparent;
+}
+
+.property-thumb-grid button.active {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(22, 122, 70, 0.14);
+}
+
+.property-thumb-grid img {
+  display: block;
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+}
+
+.property-info-panel {
+  position: sticky;
+  top: 18px;
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.property-info-panel h2 {
+  color: var(--green-dark);
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.property-info-panel p {
+  color: var(--muted);
+}
+
+.property-cta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.property-copy-message {
+  color: var(--green-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.broker-mini-card {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  color: var(--muted);
+  background: #fbfdfb;
+  font-size: 13px;
+}
+
+.broker-mini-card strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.property-fact-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+}
+
+.property-fact-bar span {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-right: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.property-fact-bar span:last-child {
+  border-right: 0;
+}
+
+.property-fact-bar strong {
+  color: var(--ink);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.property-detail-section,
+.property-loading {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+}
+
+.property-detail-section p {
+  color: var(--muted);
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.property-detail-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.property-detail-list div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfdfb;
+}
+
+.property-detail-list span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.property-detail-list strong {
+  overflow-wrap: anywhere;
 }
 
 .public-empty {
@@ -749,7 +1028,11 @@ label {
   .listing-card,
   .listing-form-grid,
   .public-filter-band,
-  .public-card-grid {
+  .public-card-grid,
+  .photo-preview-grid,
+  .property-detail-shell,
+  .property-fact-bar,
+  .property-detail-list {
     grid-template-columns: 1fr;
   }
 
@@ -770,5 +1053,20 @@ label {
 
   .listing-media {
     min-height: 220px;
+  }
+
+  .property-info-panel {
+    position: static;
+  }
+
+  .property-main-photo,
+  .property-main-photo img,
+  .property-photo-placeholder {
+    min-height: 320px;
+    height: 320px;
+  }
+
+  .property-thumb-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
