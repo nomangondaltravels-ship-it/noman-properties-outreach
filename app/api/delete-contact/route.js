@@ -54,14 +54,24 @@ async function visibleMatches(request, identifiers) {
 async function archiveContacts(supabase, contacts) {
   const deleteIds = contacts.map((contact) => contact.id);
   const timestamp = new Date().toISOString();
-  const { data: archived, error: archiveError } = await supabase
+  const { error: archiveError } = await supabase
     .from('contacts')
     .update({ status: 'deleted', updated_at: timestamp })
     .in('id', deleteIds)
     .select('id');
   if (archiveError) throw archiveError;
 
-  const archivedIds = new Set((archived || []).map((contact) => contact.id));
+  const { data: verifiedArchive, error: verifyArchiveError } = await supabase
+    .from('contacts')
+    .select('id,status')
+    .in('id', deleteIds);
+  if (verifyArchiveError) throw verifyArchiveError;
+
+  const archivedIds = new Set(
+    (verifiedArchive || [])
+      .filter((contact) => contact.status === 'deleted')
+      .map((contact) => contact.id)
+  );
   const missingIds = deleteIds.filter((id) => !archivedIds.has(id));
   if (!missingIds.length) return { deletedIds: deleteIds, mode: 'archived' };
 
@@ -72,8 +82,18 @@ async function archiveContacts(supabase, contacts) {
     .select('id');
   if (deleteError) throw deleteError;
 
-  const removedIds = new Set((removed || []).map((contact) => contact.id));
-  const failedIds = missingIds.filter((id) => !removedIds.has(id));
+  const { data: remaining, error: remainingError } = await supabase
+    .from('contacts')
+    .select('id')
+    .in('id', missingIds);
+  if (remainingError) throw remainingError;
+
+  const remainingIds = new Set((remaining || []).map((contact) => contact.id));
+  const removedIds = new Set([
+    ...(removed || []).map((contact) => contact.id),
+    ...missingIds.filter((id) => !remainingIds.has(id))
+  ]);
+  const failedIds = missingIds.filter((id) => remainingIds.has(id));
   if (failedIds.length) {
     const markerContacts = contacts.filter((contact) => failedIds.includes(contact.id));
     const markedIds = await addDeleteMarkers(supabase, markerContacts);
