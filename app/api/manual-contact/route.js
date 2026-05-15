@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { businessEmailBlocked } from '@/lib/compliance';
+import { removeDeleteMarkers } from '@/lib/deleteMarkers';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -97,6 +98,12 @@ export async function POST(request) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     saved = data;
     action = 'added';
+  }
+
+  try {
+    await removeDeleteMarkers(supabase, [saved.id]);
+  } catch (markerError) {
+    return NextResponse.json({ error: markerError.message || 'Contact saved, but restore cleanup failed.' }, { status: 500 });
   }
 
   const { count } = await supabase

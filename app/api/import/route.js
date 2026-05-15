@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { businessEmailBlocked } from '@/lib/compliance';
+import { removeDeleteMarkers } from '@/lib/deleteMarkers';
 
 export const runtime = 'nodejs';
 
@@ -149,6 +150,7 @@ export async function POST(request) {
   let added = 0;
   let updated = 0;
   const items = [];
+  const savedIds = [];
 
   for (const contact of incoming) {
     const key = contactKey(contact);
@@ -174,14 +176,22 @@ export async function POST(request) {
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       existing.set(key, data);
       items.push({ id: data.id, email: data.email, status: data.status, action: 'updated' });
+      savedIds.push(data.id);
       updated += 1;
     } else {
       const { data, error } = await supabase.from('contacts').insert(contact).select().single();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       existing.set(key, data);
       items.push({ id: data.id, email: data.email, status: data.status, action: 'added' });
+      savedIds.push(data.id);
       added += 1;
     }
+  }
+
+  try {
+    await removeDeleteMarkers(supabase, savedIds);
+  } catch (markerError) {
+    return NextResponse.json({ error: markerError.message || 'Contacts imported, but restore cleanup failed.' }, { status: 500 });
   }
 
   const { count } = await supabase
