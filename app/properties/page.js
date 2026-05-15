@@ -84,6 +84,8 @@ export default function PublicPropertiesPage() {
     });
   }, [areaFilter, listings, query, typeFilter]);
 
+  const hasVisibleListings = filteredListings.length > 0;
+
   function inquiryText(listing) {
     return [
       `Hello ${config.brokerName || 'Hafiz Muhammad Noman'},`,
@@ -146,16 +148,11 @@ export default function PublicPropertiesPage() {
           <button type="button" onClick={loadData}>Refresh</button>
         </section>
 
-        <section className="public-listing-summary">
-          <h2>{loading ? 'Loading listings...' : `${filteredListings.length} listing(s) available`}</h2>
-          <p>Use the filters above to view sale or rent options.</p>
-        </section>
-
-        {!loading && !filteredListings.length && (
-          <div className="empty-state public-empty">
-            <strong>No listings available right now.</strong>
-            <p>Please check again later or contact the broker directly.</p>
-          </div>
+        {(loading || hasVisibleListings) && (
+          <section className="public-listing-summary">
+            <h2>{loading ? 'Loading listings...' : `${filteredListings.length} listing(s) available`}</h2>
+            {hasVisibleListings && <p>Use the filters above to view sale or rent options.</p>}
+          </section>
         )}
 
         <section className="public-card-grid">
