@@ -88,6 +88,16 @@ h2 {
   white-space: nowrap;
 }
 
+.button-link.button-reset {
+  width: auto;
+}
+
+.subtle-link {
+  color: #314039;
+  background: #fbfdfb;
+  border-color: var(--line);
+}
+
 .preserve {
   white-space: pre-wrap;
 }
@@ -539,6 +549,136 @@ td input[type="checkbox"] {
   flex: 0 0 auto;
 }
 
+.share-message {
+  color: var(--green-dark);
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.public-hero {
+  background: linear-gradient(135deg, #10261f 0%, #213f43 56%, #68501f 100%);
+  color: #fff;
+  padding: 44px clamp(18px, 5vw, 72px);
+}
+
+.public-hero-inner {
+  display: grid;
+  gap: 14px;
+  max-width: 980px;
+}
+
+.public-hero h1 {
+  font-size: clamp(34px, 5vw, 58px);
+}
+
+.public-hero p:not(.eyebrow) {
+  max-width: 720px;
+  color: #dce8e2;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.public-hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.public-main {
+  padding-top: 24px;
+}
+
+.public-filter-band {
+  display: grid;
+  grid-template-columns: minmax(240px, auto) minmax(180px, 240px) minmax(220px, 1fr) auto;
+  gap: 10px;
+  padding: 16px;
+}
+
+.public-listing-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 14px;
+}
+
+.public-listing-summary p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.public-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.public-property-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.public-property-media {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #edf4ef;
+}
+
+.public-property-placeholder {
+  display: grid;
+  place-items: center;
+  color: #eaf5ee;
+  background: linear-gradient(135deg, #19332a, #31565a);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.public-property-body {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+}
+
+.public-property-body h2 {
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.public-property-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.public-property-facts span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: #fbfdfb;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.public-property-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.public-empty {
+  margin-bottom: 18px;
+}
+
 .empty-state {
   display: grid;
   gap: 8px;
@@ -607,7 +747,9 @@ label {
   .listing-grid,
   .listing-filter-controls,
   .listing-card,
-  .listing-form-grid {
+  .listing-form-grid,
+  .public-filter-band,
+  .public-card-grid {
     grid-template-columns: 1fr;
   }
 
@@ -619,7 +761,9 @@ label {
   .actions,
   .filters,
   .campaign-buttons,
-  .manual-grid {
+  .manual-grid,
+  .public-listing-summary,
+  .public-property-actions {
     flex-direction: column;
     display: flex;
   }

@@ -47,6 +47,8 @@ export default function ListingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [shareUrl, setShareUrl] = useState('/properties');
+  const [shareMessage, setShareMessage] = useState('');
 
   async function loadListings() {
     setLoading(true);
@@ -58,6 +60,7 @@ export default function ListingsPage() {
 
   useEffect(() => {
     loadListings();
+    setShareUrl(`${window.location.origin}/properties`);
   }, []);
 
   const filteredListings = useMemo(() => {
@@ -87,6 +90,15 @@ export default function ListingsPage() {
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+  }
+
+  async function copyPublicLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareMessage(`Public link copied: ${shareUrl}`);
+    } catch {
+      setShareMessage(`Public link: ${shareUrl}`);
+    }
   }
 
   async function saveListing(event) {
@@ -145,6 +157,8 @@ export default function ListingsPage() {
           <h1>My Property Listings</h1>
         </div>
         <div className="top-actions">
+          <Link className="button-link" href="/properties" target="_blank">View Public Page</Link>
+          <button type="button" className="button-link button-reset" onClick={copyPublicLink}>Copy Share Link</button>
           <Link className="button-link" href="/">Outreach Dashboard</Link>
           <div className="status">Sale and rent inventory</div>
         </div>
@@ -161,7 +175,8 @@ export default function ListingsPage() {
         <section className="band listing-filter-band">
           <div>
             <h2>Filter Listings</h2>
-            <p>Yahan sirf aapki apni saved properties show hongi.</p>
+            <p>Yahan sirf aapki apni saved properties show hongi. Share link: {shareUrl}</p>
+            {shareMessage && <p className="share-message">{shareMessage}</p>}
           </div>
           <div className="listing-filter-controls">
             <div className="segment">
