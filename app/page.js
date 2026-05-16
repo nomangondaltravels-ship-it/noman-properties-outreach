@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { canEmailContact, categoryTemplates, daysSince, normalizeCategory } from '@/lib/compliance';
 
@@ -328,7 +327,6 @@ export default function Dashboard() {
           <h1>Noman Properties Outreach</h1>
         </div>
         <div className="top-actions">
-          <Link className="button-link" href="/listings">My Listings</Link>
           <div className="status">{config.smtpConfigured ? `SMTP ready: ${config.fromEmail}` : 'SMTP not configured'}</div>
         </div>
       </header>
