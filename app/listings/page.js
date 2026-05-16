@@ -16,6 +16,8 @@ const emptyListing = {
   availability: 'Available',
   status: 'available',
   permit_number: '',
+  nexbridge_url: '',
+  nexbridge_ref: '',
   photos: '',
   notes: ''
 };
@@ -84,6 +86,8 @@ export default function ListingsPage() {
         listing.price,
         listing.availability,
         listing.permit_number,
+        listing.nexbridge_ref,
+        listing.nexbridge_url,
         listing.notes
       ]
         .join(' ')
@@ -411,6 +415,22 @@ export default function ListingsPage() {
                   placeholder="Optional"
                 />
               </label>
+              <label>
+                NexBridge Ref / ID
+                <input
+                  value={form.nexbridge_ref}
+                  onChange={(event) => updateForm('nexbridge_ref', event.target.value)}
+                  placeholder="Optional listing reference"
+                />
+              </label>
+              <label>
+                NexBridge Listing Link
+                <input
+                  value={form.nexbridge_url}
+                  onChange={(event) => updateForm('nexbridge_url', event.target.value)}
+                  placeholder="Paste your NexBridge listing URL"
+                />
+              </label>
               <label className="wide photo-upload-field">
                 Upload Photos
                 <input
@@ -503,9 +523,13 @@ export default function ListingsPage() {
                       {listing.building && <p className="row-note">{listing.building}</p>}
                       {listing.notes && <p className="row-note">{listing.notes}</p>}
                       {listing.permit_number && <p className="row-note">Permit: {listing.permit_number}</p>}
+                      {listing.nexbridge_ref && <p className="row-note">NexBridge Ref: {listing.nexbridge_ref}</p>}
                       <div className="listing-link-actions">
                         <Link className="small-action" href={`/properties/${listing.id}`} target="_blank">Open Details</Link>
                         <button type="button" className="small-action" onClick={() => copyListingLink(listing)}>Copy Listing Link</button>
+                        {listing.nexbridge_url && (
+                          <a className="small-action" href={listing.nexbridge_url} target="_blank" rel="noreferrer">Open NexBridge</a>
+                        )}
                       </div>
                       <div className="listing-actions">
                         <span>{display(listing.status)} · {display(listing.availability)}</span>

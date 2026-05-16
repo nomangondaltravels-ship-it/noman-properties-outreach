@@ -47,8 +47,9 @@ function detailRows(listing) {
     ['Bathrooms', display(listing.bathrooms)],
     ['Size', display(listing.size)],
     ['Availability', display(listing.availability)],
-    ['Permit Number', display(listing.permit_number, 'Not provided')]
-  ];
+    ['Permit Number', display(listing.permit_number, 'Not provided')],
+    listing.nexbridge_ref ? ['Listing Ref', listing.nexbridge_ref] : null
+  ].filter(Boolean);
 }
 
 export default function PropertyDetailPage({ params }) {
@@ -195,6 +196,9 @@ export default function PropertyDetailPage({ params }) {
               {brokerPhone && <a className="button-link subtle-link" href={`tel:+${brokerPhone}`}>Call</a>}
               <a className="button-link subtle-link" href={emailLink()}>Email</a>
               <button type="button" className="button-link button-reset" onClick={copyCurrentLink}>Share Link</button>
+              {listing.nexbridge_url && (
+                <a className="button-link subtle-link" href={listing.nexbridge_url} target="_blank" rel="noreferrer">NexBridge Listing</a>
+              )}
             </div>
             {copyMessage && <p className="property-copy-message">{copyMessage}</p>}
             <div className="broker-mini-card">

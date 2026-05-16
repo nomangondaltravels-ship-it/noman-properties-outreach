@@ -77,6 +77,7 @@ export default function PublicPropertiesPage() {
         listing.price,
         listing.bedrooms,
         listing.size,
+        listing.nexbridge_ref,
         listing.notes
       ]
         .join(' ')
@@ -191,12 +192,16 @@ export default function PublicPropertiesPage() {
                   {listing.building && <p className="row-note">{listing.building}</p>}
                   {listing.notes && <p className="row-note">{listing.notes}</p>}
                   {listing.permit_number && <p className="row-note">Permit: {listing.permit_number}</p>}
+                  {listing.nexbridge_ref && <p className="row-note">Listing Ref: {listing.nexbridge_ref}</p>}
                   <div className="public-property-actions">
                     <Link className="button-link" href={`/properties/${listing.id}`}>View Details</Link>
                     {whatsapp ? (
                       <a className="button-link subtle-link" href={whatsapp} target="_blank" rel="noreferrer">WhatsApp</a>
                     ) : (
                       <a className="button-link subtle-link" href={emailLink(listing)}>Email</a>
+                    )}
+                    {listing.nexbridge_url && (
+                      <a className="button-link subtle-link" href={listing.nexbridge_url} target="_blank" rel="noreferrer">NexBridge</a>
                     )}
                   </div>
                 </div>
